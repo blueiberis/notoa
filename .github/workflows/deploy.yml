@@ -1,31 +1,44 @@
 name: Deploy
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
+      # 1️⃣ Checkout repo
       - uses: actions/checkout@v4
+
+      # 2️⃣ Setup Node.js
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-      - name: Install deps
+          node-version: 24
+
+      # 3️⃣ Install root dependencies
+      - name: Install root dependencies
         run: npm install
+
+      # 4️⃣ Build frontend
       - name: Build frontend
         run: |
           cd frontend
           npm install
           npm run build
+
+      # 5️⃣ Configure AWS credentials using IAM role
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::221082185791:role/GitHub-Actions-Role
+          aws-region: us-east-1
+          role-session-name: GitHubActionsDeploy
+
+      # 6️⃣ Deploy CDK stack
       - name: Deploy CDK
         run: |
           cd infra
           npm install
           npx cdk deploy --require-approval never
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
