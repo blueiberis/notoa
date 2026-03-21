@@ -1,0 +1,63 @@
+# Node modules
+node_modules/
+**/node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Next.js build output
+.next/
+out/
+
+# Vercel / temporary deployment files
+.vercel/
+.vercel_build_output/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# AWS CDK files
+cdk.out/
+cdk.context.json
+
+# Mac / Linux system files
+.DS_Store
+Thumbs.db
+
+# IDE / editor folders
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Jest / test coverage
+coverage/
+jest-*.json
+
+# npm / yarn lock files (optional if you want to ignore duplicates)
+# package-lock.json
+# yarn.lock
+
+# Temporary files
+*.tmp
+*.swp
+
+# Logs / local debug
+*.log
+
+# Optional: Docker
+docker-compose.override.yml
+Dockerfile.local
+
+# Local Lambda / serverless build artifacts
+*.zip
+dist/
+
