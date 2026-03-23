@@ -12,13 +12,24 @@ export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    const siteBucket = new s3.Bucket(this, 'FrontendBucket', { publicReadAccess: false });
-    new cf.Distribution(this, 'CF', { defaultBehavior: { origin: new origins.S3Origin(siteBucket) } });
+    // S3 Bucket for frontend
+    const siteBucket = new s3.Bucket(this, `${id}FrontendBucket`, { publicReadAccess: false });
 
-    const table = new dynamodb.Table(this, 'NotesTable', { partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING } });
-    const uploadBucket = new s3.Bucket(this, 'Uploads');
+    // CloudFront Distribution
+    new cf.Distribution(this, `${id}CF`, {
+      defaultBehavior: { origin: new origins.S3Origin(siteBucket) },
+    });
 
-    const notesFn = new lambda.Function(this, 'NotesFn', {
+    // DynamoDB Table
+    const table = new dynamodb.Table(this, `${id}NotesTable`, {
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+    });
+
+    // Upload bucket
+    const uploadBucket = new s3.Bucket(this, `${id}Uploads`);
+
+    // Notes Lambda
+    const notesFn = new lambda.Function(this, `${id}NotesFn`, {
       runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('../services/notes'),
@@ -26,7 +37,8 @@ export class InfraStack extends cdk.Stack {
     });
     table.grantReadWriteData(notesFn);
 
-    const uploadFn = new lambda.Function(this, 'UploadFn', {
+    // Upload Lambda
+    const uploadFn = new lambda.Function(this, `${id}UploadFn`, {
       runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('../services/upload'),
@@ -34,17 +46,26 @@ export class InfraStack extends cdk.Stack {
     });
     uploadBucket.grantWrite(uploadFn);
 
-    const api = new apigw.RestApi(this, 'Api');
+    // API Gateway
+    const api = new apigw.RestApi(this, `${id}Api`);
     const notes = api.root.addResource('notes');
     notes.addMethod('GET', new apigw.LambdaIntegration(notesFn));
     notes.addMethod('POST', new apigw.LambdaIntegration(notesFn));
     const upload = api.root.addResource('upload');
     upload.addMethod('POST', new apigw.LambdaIntegration(uploadFn));
 
-    const userPool = new cognito.UserPool(this, 'NotoaUserPool', { selfSignUpEnabled: true, signInAliases: { email: true } });
-    const userPoolClient = new cognito.UserPoolClient(this, 'NotoaUserPoolClient', { userPool, generateSecret: false });
+    // Cognito User Pool
+    const userPool = new cognito.UserPool(this, `${id}UserPool`, {
+      selfSignUpEnabled: true,
+      signInAliases: { email: true },
+    });
+    const userPoolClient = new cognito.UserPoolClient(this, `${id}UserPoolClient`, {
+      userPool,
+      generateSecret: false,
+    });
 
-    new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
-    new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId });
+    // Outputs
+    new cdk.CfnOutput(this, `${id}UserPoolId`, { value: userPool.userPoolId });
+    new cdk.CfnOutput(this, `${id}UserPoolClientId`, { value: userPoolClient.userPoolClientId });
   }
 }
