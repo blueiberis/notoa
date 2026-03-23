@@ -2,7 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cf from 'aws-cdk-lib/aws-cloudfront';
-import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
@@ -53,7 +53,7 @@ export class InfraStack extends cdk.Stack {
 
     // --- CloudFront ---
     const distribution = new cf.Distribution(this, `${id}CF`, {
-      defaultBehavior: { origin: new origins.S3Origin(siteBucket) },
+      defaultBehavior: { origin: new S3BucketOrigin(siteBucket) },
       certificate,
       domainNames: [`app.${props.domainName}`],
     });
@@ -81,7 +81,7 @@ export class InfraStack extends cdk.Stack {
     // --- API Gateway ---
     const api = new apigw.RestApi(this, `${id}Api`, {
       restApiName: `${kebabId}-api`,
-      deploy: false,
+      deployOptions: { stageName: 'prod' }, // automatically deploy
     });
 
     // --- Lambda Functions ---
@@ -97,7 +97,7 @@ export class InfraStack extends cdk.Stack {
         REGION: this.region,
         API_URL: api.url,
       },
-      logRetention: logs.RetentionDays.ONE_WEEK, // Lambda log group is created automatically
+      logRetention: logs.RetentionDays.ONE_WEEK,
     });
     table.grantReadWriteData(notesFn);
 
@@ -125,13 +125,6 @@ export class InfraStack extends cdk.Stack {
     const upload = api.root.addResource('upload');
     upload.addMethod('POST', new apigw.LambdaIntegration(uploadFn));
 
-    // --- Manual Deployment & Stage ---
-    const deployment = new apigw.Deployment(this, `${id}ApiDeployment`, { api });
-    const prodStage = new apigw.Stage(this, `${id}ProdStage`, {
-      deployment,
-      stageName: 'prod',
-    });
-
     // --- API Gateway Custom Domain ---
     const apiDomain = new apigw.DomainName(this, `${id}ApiDomain`, {
       domainName: `api.${props.domainName}`,
@@ -142,7 +135,7 @@ export class InfraStack extends cdk.Stack {
     new apigw.BasePathMapping(this, `${id}ApiDomainMapping`, {
       domainName: apiDomain,
       restApi: api,
-      stage: prodStage,
+      stage: api.deploymentStage,
     });
 
     // --- Grant Lambda Invoke to API Gateway ---
