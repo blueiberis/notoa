@@ -19,7 +19,7 @@ export class NotoaStack extends cdk.Stack {
     const uploadBucket = new s3.Bucket(this, 'Uploads');
 
     const notesFn = new lambda.Function(this, 'NotesFn', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('../services/notes'),
       environment: { TABLE_NAME: table.tableName },
@@ -27,7 +27,7 @@ export class NotoaStack extends cdk.Stack {
     table.grantReadWriteData(notesFn);
 
     const uploadFn = new lambda.Function(this, 'UploadFn', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('../services/upload'),
       environment: { BUCKET: uploadBucket.bucketName },
