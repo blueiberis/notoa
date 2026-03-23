@@ -9,8 +9,8 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 
 export class InfraStack extends cdk.Stack {
-  constructor(scope: Construct, id: string) {
-    super(scope, id);
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
 
     // S3 Bucket for frontend
     const siteBucket = new s3.Bucket(this, `${id}FrontendBucket`, { publicReadAccess: false });
