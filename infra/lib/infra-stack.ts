@@ -10,7 +10,6 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as destinations from 'aws-cdk-lib/aws-logs-destinations';
 
 interface InfraStackProps extends cdk.StackProps {
   certArn: string;
@@ -85,13 +84,6 @@ export class InfraStack extends cdk.Stack {
       deploy: false,
     });
 
-    // --- Shared Log Group for Lambdas ---
-    const logGroup = new logs.LogGroup(this, `${id}LogGroup`, {
-      logGroupName: `/aws/lambda/${kebabId}-functions`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
     // --- Lambda Functions ---
     const notesFn = new lambda.Function(this, `${id}NotesFn`, {
       functionName: `${kebabId}-notes-fn`,
@@ -104,9 +96,8 @@ export class InfraStack extends cdk.Stack {
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
         API_URL: api.url,
-        LOG_GROUP_NAME: logGroup.logGroupName,
       },
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logRetention: logs.RetentionDays.ONE_WEEK, // Lambda log group is created automatically
     });
     table.grantReadWriteData(notesFn);
 
@@ -121,7 +112,6 @@ export class InfraStack extends cdk.Stack {
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
         API_URL: api.url,
-        LOG_GROUP_NAME: logGroup.logGroupName,
       },
       logRetention: logs.RetentionDays.ONE_WEEK,
     });
@@ -129,11 +119,11 @@ export class InfraStack extends cdk.Stack {
 
     // --- API Gateway Methods ---
     const notes = api.root.addResource('notes');
-    notes.addMethod('GET', new apigw.LambdaIntegration(notesFn), { apiKeyRequired: false });
-    notes.addMethod('POST', new apigw.LambdaIntegration(notesFn), { apiKeyRequired: false });
+    notes.addMethod('GET', new apigw.LambdaIntegration(notesFn));
+    notes.addMethod('POST', new apigw.LambdaIntegration(notesFn));
 
     const upload = api.root.addResource('upload');
-    upload.addMethod('POST', new apigw.LambdaIntegration(uploadFn), { apiKeyRequired: false });
+    upload.addMethod('POST', new apigw.LambdaIntegration(uploadFn));
 
     // --- Manual Deployment & Stage ---
     const deployment = new apigw.Deployment(this, `${id}ApiDeployment`, { api });
@@ -158,19 +148,6 @@ export class InfraStack extends cdk.Stack {
     // --- Grant Lambda Invoke to API Gateway ---
     notesFn.grantInvoke(new iam.ServicePrincipal('apigateway.amazonaws.com'));
     uploadFn.grantInvoke(new iam.ServicePrincipal('apigateway.amazonaws.com'));
-
-    // --- Forward Lambda logs to shared log group via subscription filter ---
-    new logs.SubscriptionFilter(this, `${id}NotesLogSubscription`, {
-      logGroup: logs.LogGroup.fromLogGroupName(this, 'NotesFnLogGroup', `/aws/lambda/${notesFn.functionName}`),
-      destination: new destinations.CloudWatchLogGroup(logGroup),
-      filterPattern: logs.FilterPattern.allEvents(),
-    });
-
-    new logs.SubscriptionFilter(this, `${id}UploadLogSubscription`, {
-      logGroup: logs.LogGroup.fromLogGroupName(this, 'UploadFnLogGroup', `/aws/lambda/${uploadFn.functionName}`),
-      destination: new destinations.CloudWatchLogGroup(logGroup),
-      filterPattern: logs.FilterPattern.allEvents(),
-    });
 
     // --- CDK Outputs ---
     new cdk.CfnOutput(this, `${id}NextEnv`, {
