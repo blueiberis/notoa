@@ -6,6 +6,23 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        default: prod
+        type: choice
+        options:
+          - dev
+          - stg
+          - prod
+
+run-name: Deploy to AWS ${{ inputs.environment }} environment
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ENV: ${{ inputs.environment }}
+  COMMIT_HASH: ${{ github.sha }}
 
 jobs:
   deploy:
@@ -31,6 +48,17 @@ jobs:
           cd frontend
           npm install
           npm run build
+
+      - name: Display environment information
+        run: |
+          echo "AWS_ACCOUNT_ENV_CAPITALIZED=${AWS_ACCOUNT_ENV^}" >>${GITHUB_ENV}
+          export COMMIT_HASH_SHORT=${COMMIT_HASH::7}
+          echo "COMMIT_HASH_SHORT=$COMMIT_HASH_SHORT" >>${GITHUB_ENV}
+          export COMMIT_DESCRIPTION_EVT_HC=$(git show -s --format=%s)
+          export COMMIT_DESCRIPTION_LAST=$(git log -1 --no-merges --pretty=%B)
+          export COMMIT_DESCRIPTION="${COMMIT_DESCRIPTION_EVT_HC:-$COMMIT_DESCRIPTION_LAST}"
+          echo "COMMIT_DESCRIPTION=$COMMIT_DESCRIPTION" >>${GITHUB_ENV}
+          env -0 | sort -z | tr '\0' '\n'
 
       # 5️⃣ Configure AWS credentials using IAM role
       - name: Configure AWS credentials

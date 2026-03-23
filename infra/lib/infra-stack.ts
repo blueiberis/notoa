@@ -8,7 +8,7 @@ import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 
-export class NotoaStack extends cdk.Stack {
+export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
