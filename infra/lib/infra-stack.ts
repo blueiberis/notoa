@@ -9,13 +9,15 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as logs from 'aws-cdk-lib/aws-logs';
+import * as destinations from 'aws-cdk-lib/aws-logs-destinations';
 
 interface InfraStackProps extends cdk.StackProps {
   certArn: string;
   domainName: string;
 }
 
-// Helper: Convert PascalCase or camelCase to kebab-case
+// Helper: convert PascalCase or camelCase to kebab-case
 function toKebabCase(str: string): string {
   return str
     .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
@@ -29,7 +31,7 @@ export class InfraStack extends cdk.Stack {
 
     const kebabId = toKebabCase(id);
 
-    // --- Certificate ---
+    // --- ACM Certificate ---
     const certificate = certificatemanager.Certificate.fromCertificateArn(
       this,
       `${id}Cert`,
@@ -83,6 +85,13 @@ export class InfraStack extends cdk.Stack {
       deploy: false,
     });
 
+    // --- Shared Log Group for Lambdas ---
+    const logGroup = new logs.LogGroup(this, `${id}LogGroup`, {
+      logGroupName: `/aws/lambda/${kebabId}-functions`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // --- Lambda Functions ---
     const notesFn = new lambda.Function(this, `${id}NotesFn`, {
       functionName: `${kebabId}-notes-fn`,
@@ -95,7 +104,9 @@ export class InfraStack extends cdk.Stack {
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
         API_URL: api.url,
+        LOG_GROUP_NAME: logGroup.logGroupName,
       },
+      logRetention: logs.RetentionDays.ONE_WEEK,
     });
     table.grantReadWriteData(notesFn);
 
@@ -110,7 +121,9 @@ export class InfraStack extends cdk.Stack {
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
         API_URL: api.url,
+        LOG_GROUP_NAME: logGroup.logGroupName,
       },
+      logRetention: logs.RetentionDays.ONE_WEEK,
     });
     uploadBucket.grantWrite(uploadFn);
 
@@ -145,6 +158,19 @@ export class InfraStack extends cdk.Stack {
     // --- Grant Lambda Invoke to API Gateway ---
     notesFn.grantInvoke(new iam.ServicePrincipal('apigateway.amazonaws.com'));
     uploadFn.grantInvoke(new iam.ServicePrincipal('apigateway.amazonaws.com'));
+
+    // --- Forward Lambda logs to shared log group via subscription filter ---
+    new logs.SubscriptionFilter(this, `${id}NotesLogSubscription`, {
+      logGroup: logs.LogGroup.fromLogGroupName(this, 'NotesFnLogGroup', `/aws/lambda/${notesFn.functionName}`),
+      destination: new destinations.CloudWatchLogGroup(logGroup),
+      filterPattern: logs.FilterPattern.allEvents(),
+    });
+
+    new logs.SubscriptionFilter(this, `${id}UploadLogSubscription`, {
+      logGroup: logs.LogGroup.fromLogGroupName(this, 'UploadFnLogGroup', `/aws/lambda/${uploadFn.functionName}`),
+      destination: new destinations.CloudWatchLogGroup(logGroup),
+      filterPattern: logs.FilterPattern.allEvents(),
+    });
 
     // --- CDK Outputs ---
     new cdk.CfnOutput(this, `${id}NextEnv`, {
