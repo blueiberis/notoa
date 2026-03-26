@@ -95,9 +95,11 @@ export class InfraStack extends cdk.Stack {
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
-        API_URL: api.url,
       },
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, `${id}NotesFnLogGroup`, {
+        logGroupName: `/aws/lambda/${kebabId}-notes-fn`,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
     });
     table.grantReadWriteData(notesFn);
 
@@ -111,9 +113,11 @@ export class InfraStack extends cdk.Stack {
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
-        API_URL: api.url,
       },
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, `${id}UploadFnLogGroup`, {
+        logGroupName: `/aws/lambda/${kebabId}-upload-fn`,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
     });
     uploadBucket.grantWrite(uploadFn);
 
