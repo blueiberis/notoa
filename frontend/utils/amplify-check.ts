@@ -1,4 +1,4 @@
-import { fetchAuthSession } from 'aws-amplify/auth';
+import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 
 export async function isAmplifyConfigured(): Promise<boolean> {
   try {
@@ -7,7 +7,26 @@ export async function isAmplifyConfigured(): Promise<boolean> {
     return true;
   } catch (error: any) {
     console.error('Amplify configuration check failed:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.__type || error.code,
+    });
     return false;
+  }
+}
+
+export async function testCognitoConnection(): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Try getCurrentUser which is more likely to work if UserPool is configured
+    await getCurrentUser();
+    return { success: true };
+  } catch (error: any) {
+    console.error('Cognito connection test failed:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Unknown Cognito error' 
+    };
   }
 }
 

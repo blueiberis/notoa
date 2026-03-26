@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getCurrentUser, signOut } from 'aws-amplify/auth';
-import { isAmplifyConfigured, getEnvVariables } from '@/utils/amplify-check';
+import { isAmplifyConfigured, getEnvVariables, testCognitoConnection } from '@/utils/amplify-check';
 
 interface User {
   username: string;
@@ -30,10 +30,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      // First check if Amplify is properly configured
-      const isConfigured = await isAmplifyConfigured();
-      if (!isConfigured) {
-        setError('AWS Amplify is not properly configured. Please check environment variables.');
+      // First check if environment variables are available
+      if (!envVars.userPoolId || !envVars.userPoolClientId) {
+        setError('Missing required environment variables for AWS Amplify configuration.');
+        setLoading(false);
+        return;
+      }
+
+      // Test Cognito connection
+      const cognitoTest = await testCognitoConnection();
+      if (!cognitoTest.success) {
+        setError(`Cognito configuration error: ${cognitoTest.error}`);
         setLoading(false);
         return;
       }
@@ -46,10 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch (error: any) {
-      // User is not authenticated
+      // User is not authenticated or other error
       setUser(null);
       if (error.message?.includes('not configured') || error.message?.includes('UserPool')) {
-        setError('AWS Amplify configuration error. Please check your environment variables.');
+        setError(`AWS Amplify configuration error: ${error.message}`);
+      } else if (error.message?.includes('Network error') || error.message?.includes('Failed to fetch')) {
+        setError('Network error. Please check your internet connection.');
       }
     } finally {
       setLoading(false);
