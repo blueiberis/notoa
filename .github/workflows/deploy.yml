@@ -56,6 +56,7 @@ jobs:
             echo "NEXT_PUBLIC_CLOUDFRONT_URL=https://app.dev.notoa.tech" >> $GITHUB_ENV
             echo "BUCKET_NAME=notoa-dev-frontend" >> $GITHUB_ENV
             echo "STACK_NAME=NotoaDev" >> $GITHUB_ENV
+            echo "DISTRIBUTION_ID=devDistributionId" >> $GITHUB_ENV
           elif [ "${{ inputs.environment }}" == "stg" ]; then
             echo "NEXT_PUBLIC_REGION=us-east-1" >> $GITHUB_ENV
             echo "NEXT_PUBLIC_USER_POOL_ID=us-east-1_stgUserPoolId" >> $GITHUB_ENV
@@ -64,6 +65,7 @@ jobs:
             echo "NEXT_PUBLIC_CLOUDFRONT_URL=https://app.stg.notoa.tech" >> $GITHUB_ENV
             echo "BUCKET_NAME=notoa-stg-frontend" >> $GITHUB_ENV
             echo "STACK_NAME=NotoaStg" >> $GITHUB_ENV
+            echo "DISTRIBUTION_ID=stgDistributionId" >> $GITHUB_ENV
           else # prod
             echo "NEXT_PUBLIC_REGION=us-east-1" >> $GITHUB_ENV
             echo "NEXT_PUBLIC_USER_POOL_ID=us-east-1_h2RYmasvb" >> $GITHUB_ENV
@@ -72,6 +74,7 @@ jobs:
             echo "NEXT_PUBLIC_CLOUDFRONT_URL=https://app.notoa.tech" >> $GITHUB_ENV
             echo "BUCKET_NAME=notoa-prod-frontend" >> $GITHUB_ENV
             echo "STACK_NAME=NotoaProd" >> $GITHUB_ENV
+            echo "DISTRIBUTION_ID=E20M3U6VZEJA3I" >> $GITHUB_ENV
           fi
 
 
@@ -124,5 +127,4 @@ jobs:
       # Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         run: |
-          DISTRIBUTION_ID=$(cd infra && npx cdk output ${{ env.STACK_NAME }}CloudFrontDistributionId)
-          aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
+          aws cloudfront create-invalidation --distribution-id ${{ env.DISTRIBUTION_ID }} --paths "/*"
