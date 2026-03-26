@@ -7,11 +7,10 @@ export async function isAmplifyConfigured(): Promise<boolean> {
     return true;
   } catch (error: any) {
     console.error('Amplify configuration check failed:', error);
-    console.error('Error details:', {
-      name: error.name,
-      message: error.message,
-      code: error.__type || error.code,
-    });
+    // If the error is about not being authenticated, that's actually good - it means the config works
+    if (error.message?.includes('not authenticated') || error.message?.includes('No current user')) {
+      return true; // Configuration is working, just no user logged in
+    }
     return false;
   }
 }
@@ -23,6 +22,10 @@ export async function testCognitoConnection(): Promise<{ success: boolean; error
     return { success: true };
   } catch (error: any) {
     console.error('Cognito connection test failed:', error);
+    // If the error is about not being authenticated, that's actually good
+    if (error.message?.includes('not authenticated') || error.message?.includes('No current user')) {
+      return { success: true };
+    }
     return { 
       success: false, 
       error: error.message || 'Unknown Cognito error' 
