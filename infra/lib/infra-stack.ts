@@ -29,6 +29,8 @@ export class InfraStack extends cdk.Stack {
     super(scope, id, props);
 
     const kebabId = toKebabCase(id);
+    const appUrl = `app.${props.domainName}`;
+    const apiUrl = `api.${props.domainName}`;
 
     // --- ACM Certificate ---
     const certificate = certificatemanager.Certificate.fromCertificateArn(
@@ -55,7 +57,7 @@ export class InfraStack extends cdk.Stack {
     const distribution = new cf.Distribution(this, `${id}CF`, {
       defaultBehavior: { origin: S3BucketOrigin.withOriginAccessControl(siteBucket) },
       certificate,
-      domainNames: [`app.${props.domainName}`],
+      domainNames: [appUrl],
     });
 
     // --- DynamoDB ---
@@ -131,7 +133,7 @@ export class InfraStack extends cdk.Stack {
 
     // --- API Gateway Custom Domain ---
     const apiDomain = new apigw.DomainName(this, `${id}ApiDomain`, {
-      domainName: `api.${props.domainName}`,
+      domainName: apiUrl,
       certificate,
       endpointType: apigw.EndpointType.EDGE,
     });
@@ -151,8 +153,8 @@ export class InfraStack extends cdk.Stack {
       value: `NEXT_PUBLIC_REGION=${this.region}
 NEXT_PUBLIC_USER_POOL_ID=${userPool.userPoolId}
 NEXT_PUBLIC_USER_POOL_CLIENT_ID=${userPoolClient.userPoolClientId}
-NEXT_PUBLIC_API_URL=${api.url}
-NEXT_PUBLIC_CLOUDFRONT_URL=${distribution.distributionDomainName}`,
+NEXT_PUBLIC_API_URL=${apiUrl}
+NEXT_PUBLIC_CLOUDFRONT_URL=${appUrl}`,
     });
   }
 }
