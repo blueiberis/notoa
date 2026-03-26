@@ -16,6 +16,9 @@ on:
           - dev
           - stg
           - prod
+  # push:
+  #   branches:
+  #     - main
 
 run-name: Deploy to AWS ${{ inputs.environment }} environment
 
@@ -29,18 +32,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
+      # Checkout repo
       - uses: actions/checkout@v4
 
-      # 2️⃣ Setup Node.js
+      # Setup Node.js
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 24
 
-      # 3️⃣ Install root dependencies
+      # Install root dependencies
       - name: Install root dependencies
         run: npm install
+
+      # Set environment variables
+      - name: Set environment variables
+        run: |
+          if [ "${{ inputs.environment }}" == "dev" ]; then
+            echo "NEXT_PUBLIC_REGION=us-east-1" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_USER_POOL_ID=us-east-1_devUserPoolId" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_USER_POOL_CLIENT_ID=devUserPoolClientId" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_API_URL=https://api.dev.notoa.tech" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_CLOUDFRONT_URL=https://app.dev.notoa.tech" >> $GITHUB_ENV
+            echo "BUCKET_NAME=notoa-dev-frontend" >> $GITHUB_ENV
+            echo "STACK_NAME=NotoaDev" >> $GITHUB_ENV
+          elif [ "${{ inputs.environment }}" == "stg" ]; then
+            echo "NEXT_PUBLIC_REGION=us-east-1" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_USER_POOL_ID=us-east-1_stgUserPoolId" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_USER_POOL_CLIENT_ID=stgUserPoolClientId" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_API_URL=https://api.stg.notoa.tech" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_CLOUDFRONT_URL=https://app.stg.notoa.tech" >> $GITHUB_ENV
+            echo "BUCKET_NAME=notoa-stg-frontend" >> $GITHUB_ENV
+            echo "STACK_NAME=NotoaStg" >> $GITHUB_ENV
+          else # prod
+            echo "NEXT_PUBLIC_REGION=us-east-1" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_USER_POOL_ID=us-east-1_h2RYmasvb" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_USER_POOL_CLIENT_ID=thcbivps9f8tmfnm8h5a23qcv" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_API_URL=https://api.notoa.tech" >> $GITHUB_ENV
+            echo "NEXT_PUBLIC_CLOUDFRONT_URL=https://app.notoa.tech" >> $GITHUB_ENV
+            echo "BUCKET_NAME=notoa-prod-frontend" >> $GITHUB_ENV
+            echo "STACK_NAME=NotoaProd" >> $GITHUB_ENV
+          fi
+
 
       - name: Display environment information
         run: |
@@ -53,14 +86,7 @@ jobs:
           echo "COMMIT_DESCRIPTION=$COMMIT_DESCRIPTION" >>${GITHUB_ENV}
           env -0 | sort -z | tr '\0' '\n'
 
-      # 4️⃣ Build frontend
-      - name: Build frontend
-        run: |
-          cd frontend
-          npm install
-          npm run build
-
-      # 5️⃣ Configure AWS credentials using IAM role
+      # Configure AWS credentials using IAM role
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
@@ -68,9 +94,35 @@ jobs:
           aws-region: us-east-1
           role-session-name: GitHubActionsDeploy
 
-      # 6️⃣ Deploy CDK stack
+      # Deploy CDK stack
       - name: Deploy CDK
         run: |
           cd infra
           npm install
           npx cdk deploy --require-approval never
+
+      # Build frontend
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm install
+          
+          echo "NEXT_PUBLIC_REGION=${{ env.NEXT_PUBLIC_REGION }}" >> .env.local
+          echo "NEXT_PUBLIC_USER_POOL_ID=${{ env.NEXT_PUBLIC_USER_POOL_ID }}" >> .env.local
+          echo "NEXT_PUBLIC_USER_POOL_CLIENT_ID=${{ env.NEXT_PUBLIC_USER_POOL_CLIENT_ID }}" >> .env.local
+          echo "NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}" >> .env.local
+          echo "NEXT_PUBLIC_CLOUDFRONT_URL=${{ env.NEXT_PUBLIC_CLOUDFRONT_URL }}" >> .env.local
+          
+          npm run build
+
+      # Deploy frontend to S3
+      - name: Deploy frontend to S3
+        run: |
+          cd frontend
+          aws s3 sync .next s3://${{ env.BUCKET_NAME }} --delete
+
+      # Invalidate CloudFront cache
+      - name: Invalidate CloudFront cache
+        run: |
+          DISTRIBUTION_ID=$(cd infra && npx cdk output ${{ env.STACK_NAME }}CloudFrontDistributionId)
+          aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"

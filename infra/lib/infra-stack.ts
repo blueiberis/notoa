@@ -156,5 +156,10 @@ NEXT_PUBLIC_USER_POOL_CLIENT_ID=${userPoolClient.userPoolClientId}
 NEXT_PUBLIC_API_URL=${apiUrl}
 NEXT_PUBLIC_CLOUDFRONT_URL=${appUrl}`,
     });
+
+    new cdk.CfnOutput(this, `${id}CloudFrontDistributionId`, {
+      value: distribution.distributionId,
+      description: 'CloudFront Distribution ID for cache invalidation',
+    });
   }
 }
