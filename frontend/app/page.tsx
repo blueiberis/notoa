@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user, loading, error, envVars } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -20,6 +20,32 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-red-50">
+        <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Configuration Error</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <div className="bg-gray-100 rounded p-4 text-left mb-6">
+              <h3 className="font-semibold text-sm text-gray-700 mb-2">Environment Variables:</h3>
+              <div className="text-xs space-y-1">
+                <p>NEXT_PUBLIC_USER_POOL_ID: {envVars.userPoolId || '❌ Missing'}</p>
+                <p>NEXT_PUBLIC_USER_POOL_CLIENT_ID: {envVars.userPoolClientId || '❌ Missing'}</p>
+                <p>NEXT_PUBLIC_API_URL: {envVars.apiUrl || '❌ Missing'}</p>
+                <p>NEXT_PUBLIC_CLOUDFRONT_URL: {envVars.cloudfrontUrl || '❌ Missing'}</p>
+                <p>NEXT_PUBLIC_REGION: {envVars.region || '❌ Missing'}</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500">
+              Please ensure the environment variables are set in your deployment environment.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
