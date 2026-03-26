@@ -45,6 +45,7 @@ export class InfraStack extends cdk.Stack {
       publicReadAccess: false,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
     });
 
     const uploadBucket = new s3.Bucket(this, `${id}UploadBucket`, {
@@ -55,9 +56,15 @@ export class InfraStack extends cdk.Stack {
 
     // --- CloudFront ---
     const distribution = new cf.Distribution(this, `${id}CF`, {
-      defaultBehavior: { origin: S3BucketOrigin.withOriginAccessControl(siteBucket) },
+      defaultBehavior: {
+        origin: S3BucketOrigin.withOriginAccessControl(siteBucket),
+        allowedMethods: cf.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+        cachedMethods: cf.CachedMethods.CACHE_GET_HEAD_OPTIONS,
+        viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      },
       certificate,
       domainNames: [appUrl],
+      defaultRootObject: "index.html",
     });
 
     // --- DynamoDB ---

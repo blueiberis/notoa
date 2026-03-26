@@ -122,7 +122,7 @@ jobs:
       - name: Deploy frontend to S3
         run: |
           cd frontend
-          aws s3 sync .next s3://${{ env.BUCKET_NAME }} --delete
+          aws s3 sync out s3://${{ env.BUCKET_NAME }} --delete
 
       # Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
