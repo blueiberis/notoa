@@ -53,7 +53,7 @@ export class InfraStack extends cdk.Stack {
 
     // --- CloudFront ---
     const distribution = new cf.Distribution(this, `${id}CF`, {
-      defaultBehavior: { origin: new S3BucketOrigin(siteBucket) },
+      defaultBehavior: { origin: S3BucketOrigin.withOriginAccessControl(siteBucket) },
       certificate,
       domainNames: [`app.${props.domainName}`],
     });
