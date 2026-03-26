@@ -30,6 +30,7 @@ export class InfraStack extends cdk.Stack {
 
     const kebabId = toKebabCase(id);
     const appUrl = `app.${props.domainName}`;
+    const adminUrl = `admin.${props.domainName}`;
     const apiUrl = `api.${props.domainName}`;
 
     // --- ACM Certificate ---
@@ -54,6 +55,34 @@ export class InfraStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
+    // --- CloudFront Function for routing ---
+    const routingFunction = new cf.Function(this, `${id}RoutingFunction`, {
+      code: cf.FunctionCode.fromInline(`
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          
+          // Route admin.domain.com to /admin/* 
+          if (request.headers['host'] && request.headers['host'].value.includes('admin.')) {
+            if (uri === '/') {
+              request.uri = '/admin/index.html';
+            } else if (!uri.startsWith('/admin/')) {
+              request.uri = '/admin' + uri;
+            }
+          } else {
+            // Route app.domain.com to /app/*
+            if (uri === '/') {
+              request.uri = '/app/index.html';
+            } else if (!uri.startsWith('/app/')) {
+              request.uri = '/app' + uri;
+            }
+          }
+          
+          return request;
+        }
+      `),
+    });
+
     // --- CloudFront ---
     const distribution = new cf.Distribution(this, `${id}CF`, {
       defaultBehavior: {
@@ -61,10 +90,14 @@ export class InfraStack extends cdk.Stack {
         allowedMethods: cf.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
         cachedMethods: cf.CachedMethods.CACHE_GET_HEAD_OPTIONS,
         viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        functionAssociations: [{
+          function: routingFunction,
+          eventType: cf.FunctionEventType.VIEWER_REQUEST,
+        }],
       },
       certificate,
-      domainNames: [appUrl],
-      defaultRootObject: "index.html",
+      domainNames: [appUrl, adminUrl],
+      defaultRootObject: "", // Let the function handle routing
     });
 
     // --- DynamoDB ---
@@ -162,6 +195,14 @@ NEXT_PUBLIC_USER_POOL_ID=${userPool.userPoolId}
 NEXT_PUBLIC_USER_POOL_CLIENT_ID=${userPoolClient.userPoolClientId}
 NEXT_PUBLIC_API_URL=${apiUrl}
 NEXT_PUBLIC_CLOUDFRONT_URL=${appUrl}`,
+    });
+
+    new cdk.CfnOutput(this, `${id}AdminEnv`, {
+      value: `NEXT_PUBLIC_REGION=${this.region}
+NEXT_PUBLIC_USER_POOL_ID=${userPool.userPoolId}
+NEXT_PUBLIC_USER_POOL_CLIENT_ID=${userPoolClient.userPoolClientId}
+NEXT_PUBLIC_API_URL=${apiUrl}
+NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     });
 
     new cdk.CfnOutput(this, `${id}CloudFrontDistributionId`, {
