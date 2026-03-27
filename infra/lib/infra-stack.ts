@@ -138,9 +138,9 @@ export class InfraStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: [appUrl, adminUrl],
         allowMethods: [
-          apigw.HttpMethod.GET,
-          apigw.HttpMethod.POST,
-          apigw.HttpMethod.OPTIONS
+          'GET',
+          'POST',
+          'OPTIONS'
         ],
         allowHeaders: ['Content-Type', 'Authorization'],
         maxAge: cdk.Duration.days(1),
