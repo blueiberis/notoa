@@ -133,7 +133,19 @@ export class InfraStack extends cdk.Stack {
     // --- API Gateway ---
     const api = new apigw.RestApi(this, `${id}Api`, {
       restApiName: `${kebabId}-api`,
-      deployOptions: { stageName: 'prod' }, // automatically deploy
+      deployOptions: { stageName: 'prod' },
+      // Enable CORS at the API Gateway level
+      defaultCorsPreflightOptions: {
+        allowOrigins: [appUrl, adminUrl],
+        allowMethods: [
+          apigw.HttpMethod.GET,
+          apigw.HttpMethod.POST,
+          apigw.HttpMethod.OPTIONS
+        ],
+        allowHeaders: ['Content-Type', 'Authorization'],
+        maxAge: cdk.Duration.days(1),
+        allowCredentials: true,
+      },
     });
 
     // --- Lambda Functions ---

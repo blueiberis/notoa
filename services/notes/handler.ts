@@ -22,30 +22,11 @@ const verifyToken = async (token: string): Promise<any> => {
 export const handler = async (event: any) => {
   console.log('🔐 Received event:', JSON.stringify(event, null, 2));
 
-  // CORS headers for all responses - use actual frontend domain
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': process.env.FRONTEND_URL || '*',
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Max-Age': '86400',
-    'Access-Control-Allow-Credentials': 'true',
-  };
-
-  // Handle preflight OPTIONS request
-  if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: '',
-    };
-  }
-
   if (event.httpMethod === "GET") {
     // For GET requests, no auth required
     const data = await client.send(new ScanCommand({ TableName: TABLE }));
     return { 
       statusCode: 200, 
-      headers: corsHeaders,
       body: JSON.stringify(data.Items) 
     };
   }
@@ -57,7 +38,6 @@ export const handler = async (event: any) => {
     if (!token) {
       return { 
         statusCode: 401, 
-        headers: corsHeaders,
         body: JSON.stringify({ message: "Authorization header required" }) 
       };
     }
@@ -78,7 +58,6 @@ export const handler = async (event: any) => {
       await client.send(new PutCommand({ TableName: TABLE, Item: item }));
       return { 
         statusCode: 200, 
-        headers: corsHeaders,
         body: JSON.stringify(item) 
       };
       
@@ -86,7 +65,6 @@ export const handler = async (event: any) => {
       console.error('❌ JWT verification failed:', error);
       return { 
         statusCode: 401, 
-        headers: corsHeaders,
         body: JSON.stringify({ message: "Invalid or expired token" }) 
       };
     }
@@ -94,7 +72,6 @@ export const handler = async (event: any) => {
   
   return { 
     statusCode: 400, 
-    headers: corsHeaders,
     body: JSON.stringify({ message: "Unsupported method" }) 
   };
 };
