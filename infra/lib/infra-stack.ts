@@ -167,8 +167,11 @@ export class InfraStack extends cdk.Stack {
       code: lambda.Code.fromAsset('../services', {
         bundling: {
           image: lambda.Runtime.NODEJS_24_X.bundlingImage,
+          environment: {
+            NPM_CONFIG_CACHE: '/tmp/.npm',
+          },
           command: [
-            'bash', '-c', 
+            'bash', '-c',
             'npm install && npm run build && cp -r dist $ASSET_DEST/'
           ],
         },
@@ -194,8 +197,11 @@ export class InfraStack extends cdk.Stack {
       code: lambda.Code.fromAsset('../services', {
         bundling: {
           image: lambda.Runtime.NODEJS_24_X.bundlingImage,
+          environment: {
+            NPM_CONFIG_CACHE: '/tmp/.npm',
+          },
           command: [
-            'bash', '-c', 
+            'bash', '-c',
             'npm install && npm run build && cp -r dist $ASSET_DEST/'
           ],
         },
