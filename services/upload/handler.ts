@@ -1,6 +1,6 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuid } from "uuid";
-import { createHandler, LambdaEvent, LambdaContext } from "../utils/handler";
+import { createHandler, LambdaEvent, LambdaContext } from "../handler";
 
 const s3 = new S3Client({});
 const BUCKET = process.env.BUCKET!;
