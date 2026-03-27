@@ -164,7 +164,7 @@ export class InfraStack extends cdk.Stack {
     const notesFn = new NodejsFunction(this, `${id}NotesFn`, {
       functionName: `${kebabId}-notes-fn`,
       runtime: lambda.Runtime.NODEJS_24_X,
-      entry: '../services/src/notes/handler.ts',
+      entry: '../services/notes/handler.ts',
       handler: 'handler',
       bundling: {
         minify: true,
@@ -177,14 +177,17 @@ export class InfraStack extends cdk.Stack {
         REGION: this.region,
         FRONTEND_URL: `https://${appUrl}`,
       },
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, `${id}NotesFnLogGroup`, {
+        logGroupName: `/aws/lambda/${kebabId}-notes-fn`,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
     });
     table.grantReadWriteData(notesFn);
 
     const uploadFn = new NodejsFunction(this, `${id}UploadFn`, {
       functionName: `${kebabId}-upload-fn`,
       runtime: lambda.Runtime.NODEJS_24_X,
-      entry: '../services/src/upload/handler.ts',
+      entry: '../services/upload/handler.ts',
       handler: 'handler',
       bundling: {
         minify: true,
@@ -196,7 +199,10 @@ export class InfraStack extends cdk.Stack {
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
       },
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, `${id}UploadFnLogGroup`, {
+        logGroupName: `/aws/lambda/${kebabId}-upload-fn`,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
     });
     uploadBucket.grantWrite(uploadFn);
 
