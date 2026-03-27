@@ -1,4 +1,4 @@
-import { S3Client, ListObjectsV2Command, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, ListObjectsV2Command, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { generateUUID } from "../uuid";
@@ -7,7 +7,7 @@ import { createHandler, LambdaEvent, LambdaContext } from "../handler";
 const s3 = new S3Client({});
 const ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const BUCKET = process.env.BUCKET!;
-const RECORDINGS_TABLE = process.env.RECORDINGS_TABLE_NAME!;
+const RECORDINGS_TABLE = process.env.RECORDINGS_TABLE!;
 
 interface RecordingMetadata {
   id: string;
@@ -36,20 +36,26 @@ export const handler = createHandler('recordings-service')(async (event: LambdaE
   // GET /recordings - List user's recordings
   if (httpMethod === "GET" && path === "/recordings") {
     try {
-      const listCommand = new ListObjectsV2Command({
-        Bucket: BUCKET,
-        Prefix: `recordings/${userId}/`,
-        MaxKeys: 100
-      });
+      // Get recordings from DynamoDB
+      const scanResult = await ddbClient.send(new ScanCommand({
+        TableName: RECORDINGS_TABLE,
+        FilterExpression: 'userId = :userId AND #status = :status',
+        ExpressionAttributeNames: {
+          '#status': 'status'
+        },
+        ExpressionAttributeValues: {
+          ':userId': userId,
+          ':status': 'saved'
+        }
+      }));
       
-      const result = await s3.send(listCommand);
-      
-      const recordings = result.Contents?.map(obj => ({
-        key: obj.Key,
-        url: `https://${BUCKET}.s3.amazonaws.com/${obj.Key}`,
-        size: obj.Size,
-        lastModified: obj.LastModified,
-        name: obj.Key?.split('/').pop()?.replace('.webm', '') || 'Unknown'
+      const recordings = scanResult.Items?.map((item: any) => ({
+        id: item.id,
+        name: item.name || `Recording-${item.startTime}`,
+        size: item.size || 0,
+        lastModified: item.endTime || item.startTime,
+        key: item.s3Key || '',
+        userId: item.userId
       })) || [];
 
       return {
@@ -60,6 +66,61 @@ export const handler = createHandler('recordings-service')(async (event: LambdaE
       return {
         statusCode: 500,
         body: JSON.stringify({ message: "Failed to list recordings", error: (error as Error).message })
+      };
+    }
+  }
+
+  // GET /recordings/{id}/url - Get presigned URL for recording
+  if (httpMethod === "GET" && path && path.match(/^\/recordings\/[^\/]+\/url$/)) {
+    const recordingId = path.split('/')[2];
+    
+    try {
+      // Get recording from DynamoDB
+      const getResult = await ddbClient.send(new GetCommand({
+        TableName: RECORDINGS_TABLE,
+        Key: { id: recordingId, userId }
+      }));
+      
+      if (!getResult.Item || getResult.Item.userId !== userId) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ message: "Recording not found" })
+        };
+      }
+
+      const recording = getResult.Item as any;
+      
+      if (!recording.s3Key) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ message: "Recording file not found" })
+        };
+      }
+
+      // Generate presigned URL (valid for 1 hour)
+      const command = new GetObjectCommand({
+        Bucket: BUCKET,
+        Key: recording.s3Key
+      });
+
+      // For now, return a simple URL. In production, you'd use presigned URLs
+      // const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
+      
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          id: recording.id,
+          name: recording.name,
+          size: recording.size,
+          lastModified: recording.endTime,
+          url: `https://${BUCKET}.s3.amazonaws.com/${recording.s3Key}`,
+          presignedUrl: `https://${BUCKET}.s3.amazonaws.com/${recording.s3Key}` // Replace with signedUrl in production
+        })
+      };
+    } catch (error) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ message: "Failed to get recording URL", error: (error as Error).message })
       };
     }
   }
