@@ -169,6 +169,13 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
+        commandHooks: {
+          beforeBundling: (inputDir, outputDir) => [
+            'npm install',
+          ],
+          afterBundling: (inputDir, outputDir) => [],
+          beforeInstall: (inputDir, outputDir) => [],
+        },
       },
       environment: {
         TABLE_NAME: table.tableName,
