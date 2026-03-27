@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { v4 as uuid } from "uuid";
+import { generateUUID } from "../uuid";
 import { createHandler, LambdaEvent, LambdaContext } from "../handler";
 
 const s3 = new S3Client({});
@@ -15,7 +15,7 @@ export const handler = createHandler('upload-service')(async (event: LambdaEvent
   }
 
   const body = JSON.parse(event.body || '{}');
-  const key = `${userClaims.sub || userClaims['cognito:username']}/${uuid()}.txt`;
+  const key = `${userClaims.sub || userClaims['cognito:username']}/${generateUUID()}.txt`;
   
   await s3.send(new PutObjectCommand({ 
     Bucket: BUCKET, 

@@ -1,6 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, ScanCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { v4 as uuid } from "uuid";
+import { generateUUID } from "../uuid";
 import { createHandler, LambdaEvent, LambdaContext } from "../handler";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -27,7 +27,7 @@ export const handler = createHandler('notes-service')(async (event: LambdaEvent,
 
     const body = JSON.parse(event.body || '{}');
     const item = { 
-      id: uuid(), 
+      id: generateUUID(), 
       content: body.content,
       userId: userClaims.sub || userClaims['cognito:username'],
       createdAt: new Date().toISOString()
