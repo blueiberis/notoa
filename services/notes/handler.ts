@@ -1,29 +1,19 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, ScanCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuid } from "uuid";
-import { CognitoIdentityProviderClient, GetIdCommand } from "@aws-sdk/client-cognito-identity-provider";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const cognitoClient = CognitoIdentityProviderClient.from({});
 const TABLE = process.env.TABLE_NAME!;
-
-// Helper function to verify JWT token
-const verifyToken = async (token: string): Promise<any> => {
-  try {
-    const command = new GetIdCommand({ IdentityId: token });
-    const response = await cognitoClient.send(command);
-    return response;
-  } catch (error) {
-    console.error('JWT verification failed:', error);
-    throw new Error('Invalid token');
-  }
-};
 
 export const handler = async (event: any) => {
   console.log('🔐 Received event:', JSON.stringify(event, null, 2));
 
+  // API Gateway authorizer handles JWT verification
+  // User info is available in event.requestContext.authorizer.claims
+  const userClaims = event.requestContext?.authorizer?.claims;
+
   if (event.httpMethod === "GET") {
-    // For GET requests, no auth required
+    // For GET requests, no auth required (public endpoint)
     const data = await client.send(new ScanCommand({ TableName: TABLE }));
     return { 
       statusCode: 200, 
@@ -32,26 +22,20 @@ export const handler = async (event: any) => {
   }
   
   if (event.httpMethod === "POST") {
-    // For POST requests, verify JWT
-    const token = event.headers?.Authorization?.replace('Bearer ', '');
-    
-    if (!token) {
+    // User is authenticated by API Gateway authorizer
+    if (!userClaims) {
       return { 
         statusCode: 401, 
-        body: JSON.stringify({ message: "Authorization header required" }) 
+        body: JSON.stringify({ message: "Unauthorized" }) 
       };
     }
 
     try {
-      // Verify the JWT token
-      const tokenData = await verifyToken(token);
-      console.log('✅ JWT verified:', tokenData);
-      
       const body = JSON.parse(event.body);
       const item = { 
         id: uuid(), 
         content: body.content,
-        userId: tokenData.UserId || 'unknown', // Add user ID to note
+        userId: userClaims.sub || userClaims['cognito:username'], // User ID from JWT claims
         createdAt: new Date().toISOString()
       };
       
@@ -62,10 +46,10 @@ export const handler = async (event: any) => {
       };
       
     } catch (error) {
-      console.error('❌ JWT verification failed:', error);
+      console.error('❌ Error processing request:', error);
       return { 
-        statusCode: 401, 
-        body: JSON.stringify({ message: "Invalid or expired token" }) 
+        statusCode: 500, 
+        body: JSON.stringify({ message: "Internal server error" }) 
       };
     }
   }

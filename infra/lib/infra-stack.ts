@@ -148,6 +148,14 @@ export class InfraStack extends cdk.Stack {
       },
     });
 
+    // --- Cognito Authorizer ---
+    const authorizer = new apigw.CognitoUserPoolsAuthorizer(this, `${id}Authorizer`, {
+      cognitoUserPools: [userPool],
+      authorizerName: `${kebabId}-authorizer`,
+      identitySource: apigw.IdentitySource.header('Authorization'),
+      resultsCacheTtl: cdk.Duration.minutes(5),
+    });
+
     // --- Lambda Functions ---
     const notesFn = new lambda.Function(this, `${id}NotesFn`, {
       functionName: `${kebabId}-notes-fn`,
@@ -189,10 +197,20 @@ export class InfraStack extends cdk.Stack {
     // --- API Gateway Methods ---
     const notes = api.root.addResource('notes');
     notes.addMethod('GET', new apigw.LambdaIntegration(notesFn));
-    notes.addMethod('POST', new apigw.LambdaIntegration(notesFn));
+    notes.addMethod('POST', new apigw.LambdaIntegration(notesFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer: {
+        authorizerId: authorizer.authorizerId,
+      },
+    });
 
     const upload = api.root.addResource('upload');
-    upload.addMethod('POST', new apigw.LambdaIntegration(uploadFn));
+    upload.addMethod('POST', new apigw.LambdaIntegration(uploadFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer: {
+        authorizerId: authorizer.authorizerId,
+      },
+    });
 
     // --- API Gateway Custom Domain ---
     const apiDomain = new apigw.DomainName(this, `${id}ApiDomain`, {
