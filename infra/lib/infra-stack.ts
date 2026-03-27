@@ -112,6 +112,14 @@ export class InfraStack extends cdk.Stack {
       userPoolName: `${kebabId}-users`,
       selfSignUpEnabled: true,
       signInAliases: { email: true },
+      // Skip email verification for easier signup
+      autoVerify: { email: false },
+      passwordPolicy: {
+        minLength: 8,
+        requireLowercase: true,
+        requireUppercase: false,
+        requireSymbols: false,
+      },
     });
 
     const userPoolClient = new cognito.UserPoolClient(this, `${id}UserPoolClient`, {
