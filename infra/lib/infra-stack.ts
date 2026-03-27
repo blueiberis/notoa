@@ -154,7 +154,6 @@ export class InfraStack extends cdk.Stack {
       authorizerName: `${kebabId}-authorizer`,
       identitySource: apigw.IdentitySource.header('Authorization'),
       resultsCacheTtl: cdk.Duration.minutes(5),
-      restApi: api,
     });
 
     // --- Lambda Functions ---
@@ -200,17 +199,13 @@ export class InfraStack extends cdk.Stack {
     notes.addMethod('GET', new apigw.LambdaIntegration(notesFn));
     notes.addMethod('POST', new apigw.LambdaIntegration(notesFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
-      authorizer: {
-        authorizerId: authorizer.authorizerId,
-      },
+      authorizer,
     });
 
     const upload = api.root.addResource('upload');
     upload.addMethod('POST', new apigw.LambdaIntegration(uploadFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
-      authorizer: {
-        authorizerId: authorizer.authorizerId,
-      },
+      authorizer,
     });
 
     // --- API Gateway Custom Domain ---
