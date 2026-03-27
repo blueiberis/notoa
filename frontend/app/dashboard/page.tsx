@@ -104,6 +104,20 @@ export default function Dashboard() {
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-gray-900">Notoa Dashboard</h1>
             <div className="flex items-center space-x-4">
+              <nav className="flex space-x-4">
+                <Link 
+                  href="/dashboard" 
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Notes
+                </Link>
+                <Link 
+                  href="/recordings" 
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Recordings
+                </Link>
+              </nav>
               <span className="text-sm text-gray-600">Welcome, {user.username}</span>
               <button
                 onClick={handleSignOut}

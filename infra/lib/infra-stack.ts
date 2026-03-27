@@ -113,6 +113,13 @@ export class InfraStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    const recordingsTable = new dynamodb.Table(this, `${id}RecordingsTable`, {
+      tableName: `${kebabId}-recordings`,
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // --- Cognito ---
     const userPool = new cognito.UserPool(this, `${id}UserPool`, {
       userPoolName: `${kebabId}-users`,
@@ -218,6 +225,31 @@ export class InfraStack extends cdk.Stack {
     });
     uploadBucket.grantWrite(uploadFn);
 
+    // --- Recordings Lambda Function ---
+    const recordingsFn = new NodejsFunction(this, `${id}RecordingsFn`, {
+      functionName: `${kebabId}-recordings-fn`,
+      runtime: lambda.Runtime.NODEJS_24_X,
+      entry: '../services/recordings/handler.ts',
+      handler: 'handler',
+      bundling: {
+        minify: true,
+        sourceMap: true,
+      },
+      environment: {
+        BUCKET: uploadBucket.bucketName,
+        RECORDINGS_TABLE_NAME: recordingsTable.tableName,
+        USER_POOL_ID: userPool.userPoolId,
+        USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
+        REGION: this.region,
+      },
+      logGroup: new logs.LogGroup(this, `${id}RecordingsFnLogGroup`, {
+        logGroupName: `/aws/lambda/${kebabId}-recordings-fn`,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+    });
+    uploadBucket.grantReadWrite(recordingsFn);
+    recordingsTable.grantReadWriteData(recordingsFn);
+
     // --- API Gateway Methods ---
     const notes = api.root.addResource('notes');
     notes.addMethod('GET', new apigw.LambdaIntegration(notesFn));
@@ -228,6 +260,43 @@ export class InfraStack extends cdk.Stack {
 
     const upload = api.root.addResource('upload');
     upload.addMethod('POST', new apigw.LambdaIntegration(uploadFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer,
+    });
+
+    const recordings = api.root.addResource('recordings');
+    recordings.addMethod('GET', new apigw.LambdaIntegration(recordingsFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer,
+    });
+    
+    const recordingsStart = recordings.addResource('start');
+    recordingsStart.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer,
+    });
+    
+    const recordingId = recordings.addResource('{recordingId}');
+    const recordingPause = recordingId.addResource('pause');
+    recordingPause.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer,
+    });
+    
+    const recordingResume = recordingId.addResource('resume');
+    recordingResume.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer,
+    });
+    
+    const recordingSave = recordingId.addResource('save');
+    recordingSave.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer,
+    });
+    
+    const recordingDiscard = recordingId.addResource('discard');
+    recordingDiscard.addMethod('DELETE', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
