@@ -247,6 +247,10 @@ export class InfraStack extends cdk.Stack {
         retention: logs.RetentionDays.ONE_WEEK,
       }),
     });
+    
+    // Ensure table is created before Lambda
+    recordingsFn.node.addDependency(recordingsTable);
+    
     uploadBucket.grantReadWrite(recordingsFn);
     recordingsTable.grantReadWriteData(recordingsFn);
 

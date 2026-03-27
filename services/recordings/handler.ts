@@ -7,7 +7,19 @@ import { createHandler, LambdaEvent, LambdaContext } from "../handler";
 const s3 = new S3Client({});
 const ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const BUCKET = process.env.BUCKET!;
-const RECORDINGS_TABLE = process.env.RECORDINGS_TABLE!;
+const RECORDINGS_TABLE = process.env.RECORDINGS_TABLE_NAME!;
+
+// Debug logging
+console.log('Environment variables:', {
+  BUCKET: !!BUCKET,
+  RECORDINGS_TABLE: !!RECORDINGS_TABLE,
+  RECORDINGS_TABLE_VALUE: RECORDINGS_TABLE
+});
+
+// Validate environment variables
+if (!RECORDINGS_TABLE) {
+  throw new Error('RECORDINGS_TABLE_NAME environment variable is not set');
+}
 
 interface RecordingMetadata {
   id: string;
