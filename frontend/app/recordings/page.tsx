@@ -25,6 +25,7 @@ export default function RecordingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioErrors, setAudioErrors] = useState<{[key: string]: string}>({});
+  const [recordingUrls, setRecordingUrls] = useState<{[key: string]: string}>({});
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -56,6 +57,20 @@ export default function RecordingsPage() {
       const response = await get(`${process.env.NEXT_PUBLIC_API_URL}/recordings`);
       const data = await handleApiResponse(response);
       setRecordings(data.recordings || []);
+      
+      // Fetch presigned URLs for all recordings
+      const urls: {[key: string]: string} = {};
+      for (const recording of data.recordings || []) {
+        try {
+          const urlResponse = await get(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${recording.id}/url`);
+          const urlData = await handleApiResponse(urlResponse);
+          urls[recording.id] = urlData.url || urlData.presignedUrl;
+        } catch (err) {
+          console.error('Failed to get URL for recording:', recording.id, err);
+          urls[recording.id] = recording.url; // Fallback to direct URL
+        }
+      }
+      setRecordingUrls(urls);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch recordings');
     }
@@ -344,7 +359,7 @@ export default function RecordingsPage() {
                   <audio 
                     controls 
                     preload="metadata"
-                    src={recording.url}
+                    src={recordingUrls[recording.id] || recording.url}
                     className="w-64"
                     onLoadStart={() => {
                       console.log('Loading audio:', recording.name);
