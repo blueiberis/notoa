@@ -31,14 +31,14 @@ export default function Home() {
           <div className="text-center">
             <h2 className="text-2xl font-bold text-red-600 mb-4">Configuration Error</h2>
             <p className="text-gray-600 mb-6">{error}</p>
-            <div className="bg-gray-100 rounded p-4 text-left mb-6">
-              <h3 className="font-semibold text-sm text-gray-700 mb-2">Environment Variables:</h3>
+            <div className="bg-gray-800 rounded p-4 text-left mb-6">
+              <h3 className="font-semibold text-sm text-gray-300 mb-2">Environment Variables:</h3>
               <div className="text-xs space-y-1">
-                <p>NEXT_PUBLIC_USER_POOL_ID: <span className={envVars.userPoolId ? 'text-green-600 font-mono' : 'text-red-600'}>{envVars.userPoolId || '❌ Missing'}</span></p>
-                <p>NEXT_PUBLIC_USER_POOL_CLIENT_ID: <span className={envVars.userPoolClientId ? 'text-green-600 font-mono' : 'text-red-600'}>{envVars.userPoolClientId || '❌ Missing'}</span></p>
-                <p>NEXT_PUBLIC_API_URL: <span className={envVars.apiUrl ? 'text-green-600 font-mono' : 'text-red-600'}>{envVars.apiUrl || '❌ Missing'}</span></p>
-                <p>NEXT_PUBLIC_CLOUDFRONT_URL: <span className={envVars.cloudfrontUrl ? 'text-green-600 font-mono' : 'text-red-600'}>{envVars.cloudfrontUrl || '❌ Missing'}</span></p>
-                <p>NEXT_PUBLIC_REGION: <span className={envVars.region ? 'text-green-600 font-mono' : 'text-red-600'}>{envVars.region || '❌ Missing'}</span></p>
+                <p>NEXT_PUBLIC_USER_POOL_ID: <span className={envVars.userPoolId ? 'text-green-400 font-mono' : 'text-red-400'}>{envVars.userPoolId || '❌ Missing'}</span></p>
+                <p>NEXT_PUBLIC_USER_POOL_CLIENT_ID: <span className={envVars.userPoolClientId ? 'text-green-400 font-mono' : 'text-red-400'}>{envVars.userPoolClientId || '❌ Missing'}</span></p>
+                <p>NEXT_PUBLIC_API_URL: <span className={envVars.apiUrl ? 'text-green-400 font-mono' : 'text-red-400'}>{envVars.apiUrl || '❌ Missing'}</span></p>
+                <p>NEXT_PUBLIC_CLOUDFRONT_URL: <span className={envVars.cloudfrontUrl ? 'text-green-400 font-mono' : 'text-red-400'}>{envVars.cloudfrontUrl || '❌ Missing'}</span></p>
+                <p>NEXT_PUBLIC_REGION: <span className={envVars.region ? 'text-green-400 font-mono' : 'text-red-400'}>{envVars.region || '❌ Missing'}</span></p>
               </div>
             </div>
             <p className="text-sm text-gray-500">

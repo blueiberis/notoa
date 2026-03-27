@@ -2,12 +2,15 @@
 import { useState } from 'react';
 import { getCurrentUser, fetchAuthSession, signIn } from 'aws-amplify/auth';
 import { getEnvVariables } from '@/utils/amplify-check';
+import { AmplifyTest } from '@/components/AmplifyTest';
+import { verifyAmplifyConfig } from '@/amplify-config';
 
 export default function Debug() {
   const [result, setResult] = useState<string>('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const envVars = getEnvVariables();
+  const configVerify = verifyAmplifyConfig();
 
   const testConnection = async () => {
     setResult('Testing getCurrentUser...');
@@ -76,16 +79,17 @@ export default function Debug() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">AWS Amplify Debug</h1>
         
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Environment Variables</h2>
-          <div className="space-y-2 font-mono text-sm">
-            <p>NEXT_PUBLIC_USER_POOL_ID: {envVars.userPoolId || '❌ Missing'}</p>
-            <p>NEXT_PUBLIC_USER_POOL_CLIENT_ID: {envVars.userPoolClientId || '❌ Missing'}</p>
-            <p>NEXT_PUBLIC_API_URL: {envVars.apiUrl || '❌ Missing'}</p>
-            <p>NEXT_PUBLIC_CLOUDFRONT_URL: {envVars.cloudfrontUrl || '❌ Missing'}</p>
-            <p>NEXT_PUBLIC_REGION: {envVars.region || '❌ Missing'}</p>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Configuration Verification</h2>
+          <div className="text-sm space-y-2">
+            <p>Has UserPool ID: <span className={configVerify.hasUserPoolId ? 'text-green-600' : 'text-red-600'}>{configVerify.hasUserPoolId ? '✅' : '❌'}</span></p>
+            <p>Has Client ID: <span className={configVerify.hasUserPoolClientId ? 'text-green-600' : 'text-red-600'}>{configVerify.hasUserPoolClientId ? '✅' : '❌'}</span></p>
+            <p>UserPool ID: <span className="font-mono text-gray-700">{configVerify.userPoolId || 'Not available'}</span></p>
+            <p>Client ID: <span className="font-mono text-gray-700">{configVerify.userPoolClientId || 'Not available'}</span></p>
           </div>
         </div>
+
+        <AmplifyTest />
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Connection Tests</h2>
