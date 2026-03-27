@@ -14,6 +14,7 @@ interface AuthContextType {
   error: string | null;
   signOutUser: () => Promise<void>;
   envVars: ReturnType<typeof getEnvVariables>;
+  refreshAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -87,8 +88,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshAuth = async () => {
+    try {
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
+        setUser({
+          username: currentUser.username,
+          userId: currentUser.userId,
+        });
+        console.log('✅ Auth refreshed, user found:', currentUser);
+      } else {
+        setUser(null);
+        console.log('ℹ️ Auth refreshed, no user found');
+      }
+    } catch (error: any) {
+      console.error('❌ Auth refresh failed:', error);
+      setUser(null);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, error, signOutUser, envVars }}>
+    <AuthContext.Provider value={{ user, loading, error, signOutUser, envVars, refreshAuth }}>
       {children}
     </AuthContext.Provider>
   );
