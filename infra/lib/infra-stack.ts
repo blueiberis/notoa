@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cf from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
@@ -160,22 +161,15 @@ export class InfraStack extends cdk.Stack {
     });
 
     // --- Lambda Functions ---
-    const notesFn = new lambda.Function(this, `${id}NotesFn`, {
+    const notesFn = new NodejsFunction(this, `${id}NotesFn`, {
       functionName: `${kebabId}-notes-fn`,
       runtime: lambda.Runtime.NODEJS_24_X,
-      handler: 'dist/notes/handler.handler',
-      code: lambda.Code.fromAsset('../services', {
-        bundling: {
-          image: lambda.Runtime.NODEJS_24_X.bundlingImage,
-          environment: {
-            NPM_CONFIG_CACHE: '/tmp/.npm',
-          },
-          command: [
-            'bash', '-c',
-            'npm install && npm run build && cp -r dist $ASSET_DEST/'
-          ],
-        },
-      }),
+      entry: '../services/src/notes/handler.ts',
+      handler: 'handler',
+      bundling: {
+        minify: true,
+        sourceMap: true,
+      },
       environment: {
         TABLE_NAME: table.tableName,
         USER_POOL_ID: userPool.userPoolId,
@@ -183,39 +177,26 @@ export class InfraStack extends cdk.Stack {
         REGION: this.region,
         FRONTEND_URL: `https://${appUrl}`,
       },
-      logGroup: new logs.LogGroup(this, `${id}NotesFnLogGroup`, {
-        logGroupName: `/aws/lambda/${kebabId}-notes-fn`,
-        retention: logs.RetentionDays.ONE_WEEK,
-      }),
+      logRetention: logs.RetentionDays.ONE_WEEK,
     });
     table.grantReadWriteData(notesFn);
 
-    const uploadFn = new lambda.Function(this, `${id}UploadFn`, {
+    const uploadFn = new NodejsFunction(this, `${id}UploadFn`, {
       functionName: `${kebabId}-upload-fn`,
       runtime: lambda.Runtime.NODEJS_24_X,
-      handler: 'dist/upload/handler.handler',
-      code: lambda.Code.fromAsset('../services', {
-        bundling: {
-          image: lambda.Runtime.NODEJS_24_X.bundlingImage,
-          environment: {
-            NPM_CONFIG_CACHE: '/tmp/.npm',
-          },
-          command: [
-            'bash', '-c',
-            'npm install && npm run build && cp -r dist $ASSET_DEST/'
-          ],
-        },
-      }),
+      entry: '../services/src/upload/handler.ts',
+      handler: 'handler',
+      bundling: {
+        minify: true,
+        sourceMap: true,
+      },
       environment: {
         BUCKET: uploadBucket.bucketName,
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
       },
-      logGroup: new logs.LogGroup(this, `${id}UploadFnLogGroup`, {
-        logGroupName: `/aws/lambda/${kebabId}-upload-fn`,
-        retention: logs.RetentionDays.ONE_WEEK,
-      }),
+      logRetention: logs.RetentionDays.ONE_WEEK,
     });
     uploadBucket.grantWrite(uploadFn);
 
