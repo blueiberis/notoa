@@ -112,8 +112,10 @@ export class InfraStack extends cdk.Stack {
       userPoolName: `${kebabId}-users`,
       selfSignUpEnabled: true,
       signInAliases: { email: true },
-      // Skip email verification for easier signup
-      autoVerify: { email: false },
+      // Auto-verify email for password-only signup
+      autoVerify: { 
+        email: true, // Keep this true but we'll handle auto-confirmation
+      },
       passwordPolicy: {
         minLength: 8,
         requireLowercase: true,
