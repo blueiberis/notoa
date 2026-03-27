@@ -37,28 +37,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      console.log('🔍 Testing Cognito connection with:', {
+        userPoolId: envVars.userPoolId,
+        userPoolClientId: envVars.userPoolClientId,
+      });
+
       // Test Cognito connection
       const cognitoTest = await testCognitoConnection();
+      console.log('🧪 Cognito test result:', cognitoTest);
+      
       if (!cognitoTest.success) {
         setError(`Cognito configuration error: ${cognitoTest.error}`);
         setLoading(false);
         return;
       }
 
+      // If we get here, configuration is working
+      console.log('✅ Cognito configuration is working, checking current user...');
+      
       const currentUser = await getCurrentUser();
       if (currentUser) {
         setUser({
           username: currentUser.username,
           userId: currentUser.userId,
         });
+        console.log('✅ User is authenticated:', currentUser);
+      } else {
+        console.log('ℹ️ No user currently authenticated');
       }
     } catch (error: any) {
+      console.error('❌ Auth check failed:', error);
       // User is not authenticated or other error
       setUser(null);
       if (error.message?.includes('not configured') || error.message?.includes('UserPool')) {
         setError(`AWS Amplify configuration error: ${error.message}`);
       } else if (error.message?.includes('Network error') || error.message?.includes('Failed to fetch')) {
         setError('Network error. Please check your internet connection.');
+      } else {
+        // Other errors might just mean no user is logged in
+        console.log('ℹ️ Authentication check completed (no user logged in)');
       }
     } finally {
       setLoading(false);
