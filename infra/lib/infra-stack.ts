@@ -136,7 +136,10 @@ export class InfraStack extends cdk.Stack {
       deployOptions: { stageName: 'prod' },
       // Enable CORS at the API Gateway level
       defaultCorsPreflightOptions: {
-        allowOrigins: [appUrl, adminUrl],
+        allowOrigins: [
+          `https://${appUrl}`,
+          `https://${adminUrl}`,
+        ],
         allowMethods: [
           'GET',
           'POST',
