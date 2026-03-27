@@ -163,8 +163,16 @@ export class InfraStack extends cdk.Stack {
     const notesFn = new lambda.Function(this, `${id}NotesFn`, {
       functionName: `${kebabId}-notes-fn`,
       runtime: lambda.Runtime.NODEJS_24_X,
-      handler: 'handler.handler',
-      code: lambda.Code.fromAsset('../services/notes'),
+      handler: 'dist/notes/handler.handler',
+      code: lambda.Code.fromAsset('../services', {
+        bundling: {
+          image: lambda.Runtime.NODEJS_24_X.bundlingImage,
+          command: [
+            'bash', '-c', 
+            'npm install && npm run build && cp -r dist $ASSET_DEST/'
+          ],
+        },
+      }),
       environment: {
         TABLE_NAME: table.tableName,
         USER_POOL_ID: userPool.userPoolId,
@@ -182,8 +190,16 @@ export class InfraStack extends cdk.Stack {
     const uploadFn = new lambda.Function(this, `${id}UploadFn`, {
       functionName: `${kebabId}-upload-fn`,
       runtime: lambda.Runtime.NODEJS_24_X,
-      handler: 'handler.handler',
-      code: lambda.Code.fromAsset('../services/upload'),
+      handler: 'dist/upload/handler.handler',
+      code: lambda.Code.fromAsset('../services', {
+        bundling: {
+          image: lambda.Runtime.NODEJS_24_X.bundlingImage,
+          command: [
+            'bash', '-c', 
+            'npm install && npm run build && cp -r dist $ASSET_DEST/'
+          ],
+        },
+      }),
       environment: {
         BUCKET: uploadBucket.bucketName,
         USER_POOL_ID: userPool.userPoolId,
