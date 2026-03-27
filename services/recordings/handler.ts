@@ -1,6 +1,7 @@
 import { S3Client, ListObjectsV2Command, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { generateUUID } from "../uuid";
 import { createHandler, LambdaEvent, LambdaContext } from "../handler";
 
@@ -115,18 +116,23 @@ export const handler = createHandler('recordings-service')(async (event: LambdaE
         Key: recording.s3Key
       });
 
-      // For now, return a simple URL. In production, you'd use presigned URLs
-      // const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
+      const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
       
       return {
         statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+          'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+          'Access-Control-Allow-Credentials': 'true',
+        },
         body: JSON.stringify({
           id: recording.id,
           name: recording.name,
           size: recording.size,
           lastModified: recording.endTime,
-          url: `https://${BUCKET}.s3.amazonaws.com/${recording.s3Key}`,
-          presignedUrl: `https://${BUCKET}.s3.amazonaws.com/${recording.s3Key}` // Replace with signedUrl in production
+          url: signedUrl, // Use presigned URL
+          presignedUrl: signedUrl // Also include for clarity
         })
       };
     } catch (error) {

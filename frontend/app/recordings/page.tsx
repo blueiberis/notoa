@@ -7,7 +7,6 @@ interface Recording {
   id: string;
   key: string;
   url: string;
-  presignedUrl?: string;
   size: number;
   lastModified: string;
   name: string;
@@ -25,7 +24,7 @@ export default function RecordingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [recordingUrls, setRecordingUrls] = useState<{[key: string]: string}>({});
+  const [audioErrors, setAudioErrors] = useState<{[key: string]: string}>({});
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -57,29 +56,8 @@ export default function RecordingsPage() {
       const response = await get(`${process.env.NEXT_PUBLIC_API_URL}/recordings`);
       const data = await handleApiResponse(response);
       setRecordings(data.recordings || []);
-      
-      // Fetch presigned URLs for all recordings
-      const urls: {[key: string]: string} = {};
-      for (const recording of data.recordings || []) {
-        const url = await getRecordingUrl(recording.id);
-        if (url) {
-          urls[recording.id] = url;
-        }
-      }
-      setRecordingUrls(urls);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch recordings');
-    }
-  };
-
-  const getRecordingUrl = async (recordingId: string) => {
-    try {
-      const response = await get(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${recordingId}/url`);
-      const data = await handleApiResponse(response);
-      return data.presignedUrl || data.url; // Use presigned URL if available, fallback to direct URL
-    } catch (err) {
-      console.error('Failed to get recording URL:', err);
-      return null;
     }
   };
 
@@ -365,13 +343,29 @@ export default function RecordingsPage() {
                   
                   <audio 
                     controls 
-                    src={recordingUrls[recording.id] || recording.url}
+                    preload="metadata"
+                    src={recording.url}
                     className="w-64"
-                    onError={() => {
-                      console.error('Audio playback failed for:', recording.name);
-                      setError('Failed to load audio. Please try refreshing the page.');
+                    onLoadStart={() => {
+                      console.log('Loading audio:', recording.name);
+                      setAudioErrors(prev => ({ ...prev, [recording.id]: '' }));
+                    }}
+                    onCanPlay={() => {
+                      console.log('Audio can play:', recording.name);
+                    }}
+                    onError={(e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
+                      console.error('Audio playback error:', e);
+                      const errorMessage = `Failed to load "${recording.name}": ${(e.target as HTMLAudioElement).error?.message || 'Unknown error'}`;
+                      setAudioErrors(prev => ({ ...prev, [recording.id]: errorMessage }));
+                      setError(errorMessage);
                     }}
                   />
+                  
+                  {audioErrors[recording.id] && (
+                    <div className="mt-2 p-2 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                      {audioErrors[recording.id]}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
