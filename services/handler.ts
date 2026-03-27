@@ -60,6 +60,12 @@ export class LambdaHandler {
 
     return {
       statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+        'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+        'Access-Control-Allow-Credentials': 'true',
+      },
       body: JSON.stringify({ 
         message: 'Internal server error',
         error: error.message 
@@ -73,6 +79,12 @@ export class LambdaHandler {
     
     return {
       statusCode,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+        'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+        'Access-Control-Allow-Credentials': 'true',
+      },
       body: JSON.stringify(data)
     };
   }
