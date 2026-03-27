@@ -154,6 +154,7 @@ export class InfraStack extends cdk.Stack {
       authorizerName: `${kebabId}-authorizer`,
       identitySource: apigw.IdentitySource.header('Authorization'),
       resultsCacheTtl: cdk.Duration.minutes(5),
+      restApi: api,
     });
 
     // --- Lambda Functions ---
