@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Amplify } from 'aws-amplify';
+import { getCurrentSession, get, post, del, handleApiResponse } from '@/utils/auth';
 
 interface Recording {
   key: string;
@@ -51,18 +51,9 @@ export default function RecordingsPage() {
 
   const fetchRecordings = async () => {
     try {
-      const response = await fetch('https://api.notoa.tech/recordings', {
-        headers: {
-          'Authorization': `Bearer ${(await Amplify.Auth.currentSession()).getAccessToken().getJwtToken()}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setRecordings(data.recordings || []);
-      } else {
-        throw new Error('Failed to fetch recordings');
-      }
+      const response = await get(`${process.env.NEXT_PUBLIC_API_URL}/recordings`);
+      const data = await handleApiResponse(response);
+      setRecordings(data.recordings || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch recordings');
     }
@@ -85,23 +76,13 @@ export default function RecordingsPage() {
       mediaRecorder.start();
       setRecordingTime(0);
 
-      const response = await fetch('https://api.notoa.tech/recordings/start', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${(await Amplify.Auth.currentSession()).getAccessToken().getJwtToken()}`
-        }
+      const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/start`);
+      const data = await handleApiResponse(response);
+      setActiveRecording({
+        id: data.recordingId,
+        status: 'recording',
+        startTime: data.startTime
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setActiveRecording({
-          id: data.recordingId,
-          status: 'recording',
-          startTime: data.startTime
-        });
-      } else {
-        throw new Error('Failed to start recording');
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start recording');
     }
@@ -114,16 +95,8 @@ export default function RecordingsPage() {
     setActiveRecording({ ...activeRecording, status: 'paused' });
 
     try {
-      const response = await fetch(`https://api.notoa.tech/recordings/${activeRecording.id}/pause`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${(await Amplify.Auth.currentSession()).getAccessToken().getJwtToken()}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to pause recording');
-      }
+      const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${activeRecording.id}/pause`);
+      await handleApiResponse(response);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to pause recording');
     }
@@ -136,16 +109,8 @@ export default function RecordingsPage() {
     setActiveRecording({ ...activeRecording, status: 'recording' });
 
     try {
-      const response = await fetch(`https://api.notoa.tech/recordings/${activeRecording.id}/resume`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${(await Amplify.Auth.currentSession()).getAccessToken().getJwtToken()}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to resume recording');
-      }
+      const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${activeRecording.id}/resume`);
+      await handleApiResponse(response);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resume recording');
     }
@@ -164,25 +129,14 @@ export default function RecordingsPage() {
       const base64Audio = reader.result as string;
       
       try {
-        const response = await fetch(`https://api.notoa.tech/recordings/${activeRecording.id}/save`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${(await Amplify.Auth.currentSession()).getAccessToken().getJwtToken()}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            audioData: base64Audio.split(',')[1], // Remove data:audio/webm;base64, prefix
-            name: `Recording-${new Date().toISOString().slice(0, 19)}`
-          })
+        const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${activeRecording.id}/save`, {
+          audioData: base64Audio.split(',')[1], // Remove data:audio/webm;base64, prefix
+          name: `Recording-${new Date().toISOString().slice(0, 19)}`
         });
-
-        if (response.ok) {
-          setActiveRecording(null);
-          setRecordingTime(0);
-          fetchRecordings(); // Refresh the list
-        } else {
-          throw new Error('Failed to save recording');
-        }
+        await handleApiResponse(response);
+        setActiveRecording(null);
+        setRecordingTime(0);
+        fetchRecordings(); // Refresh the list
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to save recording');
       } finally {
@@ -203,20 +157,11 @@ export default function RecordingsPage() {
     }
 
     try {
-      const response = await fetch(`https://api.notoa.tech/recordings/${activeRecording.id}/discard`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${(await Amplify.Auth.currentSession()).getAccessToken().getJwtToken()}`
-        }
-      });
-
-      if (response.ok) {
-        setActiveRecording(null);
-        setRecordingTime(0);
-        audioChunksRef.current = [];
-      } else {
-        throw new Error('Failed to discard recording');
-      }
+      const response = await del(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${activeRecording.id}/discard`);
+      await handleApiResponse(response);
+      setActiveRecording(null);
+      setRecordingTime(0);
+      audioChunksRef.current = [];
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to discard recording');
     } finally {

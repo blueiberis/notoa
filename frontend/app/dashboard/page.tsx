@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getCurrentSession, get, post, handleApiResponse } from '@/utils/auth';
 
 interface Note {
   id: string;
@@ -32,16 +33,9 @@ export default function Dashboard() {
   const fetchNotes = async () => {
     setLoadingNotes(true);
     try {
-      const token = await getCurrentSession();
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notes`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setNotes(data);
-      }
+      const response = await get(`${process.env.NEXT_PUBLIC_API_URL}/notes`);
+      const data = await handleApiResponse(response);
+      setNotes(data);
     } catch (error) {
       console.error('Failed to fetch notes:', error);
     } finally {
@@ -49,31 +43,17 @@ export default function Dashboard() {
     }
   };
 
-  const getCurrentSession = async () => {
-    const session = await fetchAuthSession();
-    //return session.tokens?.accessToken;
-    return session.tokens?.idToken?.toString();
-  };
-
   const handleCreateNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNote.trim()) return;
 
     try {
-      const token = await getCurrentSession();
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ content: newNote }),
+      const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/notes`, {
+        content: newNote.trim()
       });
-
-      if (response.ok) {
-        setNewNote('');
-        fetchNotes();
-      }
+      const data = await handleApiResponse(response);
+      setNotes([...notes, data]);
+      setNewNote('');
     } catch (error) {
       console.error('Failed to create note:', error);
     }
