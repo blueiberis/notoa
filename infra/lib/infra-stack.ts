@@ -190,11 +190,9 @@ export class InfraStack extends cdk.Stack {
     const notes = api.root.addResource('notes');
     notes.addMethod('GET', new apigw.LambdaIntegration(notesFn));
     notes.addMethod('POST', new apigw.LambdaIntegration(notesFn));
-    notes.addMethod('OPTIONS', new apigw.LambdaIntegration(notesFn));
 
     const upload = api.root.addResource('upload');
     upload.addMethod('POST', new apigw.LambdaIntegration(uploadFn));
-    upload.addMethod('OPTIONS', new apigw.LambdaIntegration(uploadFn));
 
     // --- API Gateway Custom Domain ---
     const apiDomain = new apigw.DomainName(this, `${id}ApiDomain`, {
