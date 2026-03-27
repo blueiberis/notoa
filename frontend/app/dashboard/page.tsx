@@ -51,7 +51,8 @@ export default function Dashboard() {
 
   const getCurrentSession = async () => {
     const session = await fetchAuthSession();
-    return session.tokens?.accessToken;
+    //return session.tokens?.accessToken;
+    return session.tokens?.idToken?.toString();
   };
 
   const handleCreateNote = async (e: React.FormEvent) => {
