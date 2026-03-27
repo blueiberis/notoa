@@ -41,6 +41,13 @@ export default function Home() {
                 <p>NEXT_PUBLIC_REGION: <span className={envVars.region ? 'text-green-400 font-mono' : 'text-red-400'}>{envVars.region || '❌ Missing'}</span></p>
               </div>
             </div>
+            <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-4">
+              <h3 className="font-semibold text-sm text-blue-800 mb-2">💡 Tip</h3>
+              <p className="text-sm text-blue-700">
+                If you see "User needs to be authenticated" errors in console, this is actually GOOD! 
+                It means Amplify is configured correctly - just no user is logged in yet.
+              </p>
+            </div>
             <p className="text-sm text-gray-500">
               Please ensure the environment variables are set in your deployment environment.
             </p>

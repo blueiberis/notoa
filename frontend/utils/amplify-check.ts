@@ -23,8 +23,10 @@ export async function testCognitoConnection(): Promise<{ success: boolean; error
   } catch (error: any) {
     console.error('Cognito connection test failed:', error);
     // If the error is about not being authenticated, that's actually good
-    if (error.message?.includes('not authenticated') || error.message?.includes('No current user')) {
-      return { success: true };
+    if (error.message?.includes('not authenticated') || 
+        error.message?.includes('No current user') ||
+        error.message?.includes('User needs to be authenticated')) {
+      return { success: true }; // Configuration is working, just no user logged in
     }
     return { 
       success: false, 
