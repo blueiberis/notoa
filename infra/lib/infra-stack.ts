@@ -71,11 +71,16 @@ export class InfraStack extends cdk.Stack {
               request.uri = '/admin' + uri;
             }
           } else {
-            // Route app.domain.com to /app/*
+            // Route app.domain.com to /app/* with SPA fallback
             if (uri === '/') {
               request.uri = '/app/index.html';
             } else if (!uri.startsWith('/app/')) {
               request.uri = '/app' + uri;
+            }
+            
+            // SPA fallback: if not a file (no extension), serve index.html
+            if (!uri.includes('.')) {
+              request.uri = '/app/index.html';
             }
           }
           
