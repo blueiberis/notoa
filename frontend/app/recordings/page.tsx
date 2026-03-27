@@ -61,19 +61,43 @@ export default function RecordingsPage() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      // Clear any previous chunks
+      audioChunksRef.current = [];
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
+      
+      const mediaRecorder = new MediaRecorder(stream, { 
+        mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 128000
+      });
       
       mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
+        console.log('Data available:', event.data.size, 'bytes');
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.start();
+      mediaRecorder.onstop = () => {
+        console.log('MediaRecorder stopped, total chunks:', audioChunksRef.current.length);
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+        setError('Recording error occurred. Please try again.');
+      };
+
+      mediaRecorder.start(1000); // Collect data every 1 second
       setRecordingTime(0);
 
       const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/start`);
@@ -122,26 +146,68 @@ export default function RecordingsPage() {
     setIsLoading(true);
     mediaRecorderRef.current.stop();
     
+    // Wait for the last dataavailable event
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    if (audioChunksRef.current.length === 0) {
+      setError('No audio data recorded. Please try recording again.');
+      setIsLoading(false);
+      return;
+    }
+    
     const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    
+    if (audioBlob.size === 0) {
+      setError('Audio recording is empty. Please try again.');
+      setIsLoading(false);
+      return;
+    }
+    
+    console.log('Audio blob size:', audioBlob.size, 'bytes');
+    console.log('Audio chunks count:', audioChunksRef.current.length);
+    
     const reader = new FileReader();
     
     reader.onloadend = async () => {
       const base64Audio = reader.result as string;
       
+      if (!base64Audio || !base64Audio.includes(',')) {
+        setError('Failed to process audio data. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+      
+      const audioData = base64Audio.split(',')[1];
+      
+      if (!audioData || audioData.length === 0) {
+        setError('Audio data is empty after processing. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log('Base64 audio data length:', audioData.length);
+      
       try {
+        const recordingName = `Recording-${new Date().toISOString().slice(0, 19)}`;
         const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${activeRecording.id}/save`, {
-          audioData: base64Audio.split(',')[1], // Remove data:audio/webm;base64, prefix
-          name: `Recording-${new Date().toISOString().slice(0, 19)}`
+          audioData,
+          name: recordingName
         });
         await handleApiResponse(response);
         setActiveRecording(null);
         setRecordingTime(0);
+        audioChunksRef.current = [];
         fetchRecordings(); // Refresh the list
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to save recording');
       } finally {
         setIsLoading(false);
       }
+    };
+
+    reader.onerror = () => {
+      setError('Failed to read audio data. Please try again.');
+      setIsLoading(false);
     };
 
     reader.readAsDataURL(audioBlob);
