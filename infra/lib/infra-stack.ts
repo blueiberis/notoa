@@ -357,7 +357,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       description: `Environment variables for ${kebabId}`,
       tier: ssm.ParameterTier.STANDARD,
     });*/
-    /*const envParameterStore = new ssm.CfnParameter(this, `${id}EnvParameterStore`, {
+    const envParameterStore = new ssm.CfnParameter(this, `${id}EnvParameterStore`, {
       name: `/attributes/${kebabId}`,
       type: 'String',
       value: 'placeholder',
@@ -368,6 +368,6 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
       value: envParameterStore.name || `/attributes/${kebabId}`,
       description: 'Parameter Store path for environment variables',
-    });*/
+    });
   }
 }
