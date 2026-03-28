@@ -351,7 +351,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       description: 'CloudFront Distribution ID for cache invalidation',
     });
 
-    const envParameterStore = new ssm.StringParameter(this, `${id}EnvParameterStore`, {
+    /*const envParameterStore = new ssm.StringParameter(this, `${id}EnvParameterStore`, {
       parameterName: `/attributes/${kebabId}`,
       stringValue: 'placeholder',
       description: `Environment variables for ${kebabId}`,
@@ -364,10 +364,19 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       value: 'placeholder',
       tier: 'Standard',
     });*/
+const envParameterStore = new cdk.CfnResource(this, `${id}SecureParameter`, {
+  type: 'AWS::SSM::Parameter',
+  properties: {
+    Name: `/attributes/${kebabId}`,
+    Type: 'SecureString',
+    Value: 'placeholder',
+    Tier: 'Standard',
+  },
+});
     // --- Parameter Store for Environment Variables ---
     // Output Parameter Store name
     new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
-      value: envParameterStore.parameterName || `/attributes/${kebabId}`,
+      value: envParameterStore.ref || `/attributes/${kebabId}`,
       description: 'Parameter Store path for environment variables',
     });
   }
