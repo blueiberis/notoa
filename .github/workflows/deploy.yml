@@ -104,6 +104,82 @@ jobs:
           npm install
           npx cdk deploy --require-approval never
 
+      - name: Validate SSM attributes parameter
+        run: |
+          case "${{ env.AWS_ACCOUNT_ENV }}" in
+            prod) SUFFIX=Prod ;;
+            stg)  SUFFIX=Stg ;;
+            *)    SUFFIX=Dev ;;
+          esac
+          STACK_NAME="notoa${SUFFIX}"
+          PARAM_PATH="/attributes/notoa-${SUFFIX,,}"
+          
+          echo "🔍 Looking for SSM parameter: $PARAM_PATH"
+          
+          # Get SSM parameter path from CloudFormation stack outputs
+          STACK_OUTPUT=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='EnvParameterStoreName'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -z "$STACK_OUTPUT" ]; then
+            echo "::error::Stack output 'EnvParameterStoreName' not found for stack: $STACK_NAME"
+            echo "::error::Make sure the stack is deployed and outputs the parameter path"
+            exit 1
+          fi
+          
+          echo "✅ Found SSM parameter path: $STACK_OUTPUT"
+          echo "📄 Fetching SSM parameter..."
+          
+          # Fetch SSM parameter
+          VALUE=$(aws ssm get-parameter \
+            --name "$STACK_OUTPUT" \
+            --region ${{ env.AWS_REGION }} \
+            --query "Parameter.Value" \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -z "$VALUE" ]; then
+            echo "::error::SSM parameter is empty: $STACK_OUTPUT"
+            echo "::error::Create the parameter with: aws ssm put-parameter --name \"$STACK_OUTPUT\" --value \"\$(cat .env)\" --type String --overwrite"
+            exit 1
+          fi
+          
+          echo "📋 Current SSM parameter content:"
+          echo "$VALUE"
+          
+          # Define required keys for notoa project
+          REQUIRED_KEYS="OPENAI_API_KEY"
+          
+          echo "🔍 Validating required keys: $REQUIRED_KEYS"
+          
+          # Parse and validate required keys (KEY=VALUE format)
+          VALIDATION_FAILED=false
+          for key in $REQUIRED_KEYS; do
+            if echo "$VALUE" | grep -q "^$key="; then
+              echo "✅ $key: Found"
+            else
+              echo "::error::SSM parameter $STACK_OUTPUT: required key \"$key\" is missing"
+              echo "::error::Expected format: $key=your_value"
+              VALIDATION_FAILED=true
+            fi
+          done
+          
+          # Check for empty values
+          if echo "$VALUE" | grep -q "=$"; then
+            echo "::warning::Found empty values in SSM parameter"
+            echo "::warning::Empty values should be set in AWS Console for security"
+          fi
+          
+          if [ "$VALIDATION_FAILED" = true ]; then
+            echo "::error::SSM attributes parameter validation FAILED"
+            echo "::error::One or more required environment variables are missing"
+            exit 1
+          else
+            echo "✅ SSM attributes parameter valid (required keys present)"
+            echo "🎉 Ready for deployment!"
+          fi
+
       # Build frontend
       - name: Build frontend
         run: |

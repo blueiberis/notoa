@@ -349,5 +349,24 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       value: distribution.distributionId,
       description: 'CloudFront Distribution ID for cache invalidation',
     });
+
+    // --- Parameter Store for Environment Variables ---
+    const envParameterStore = new ssm.StringParameter(this, `${id}EnvParameterStore`, {
+      parameterName: `/attributes/${kebabId}`,
+      description: `Environment variables for ${kebabId} stack in KEY=VALUE format`,
+      stringValue: `# Environment Variables for ${kebabId}
+# Add your environment variables in KEY=VALUE format, one per line
+# Example:
+# OPENAI_API_KEY=your-openai-api-key-here
+`,
+      tier: ssm.ParameterTier.STANDARD,
+      type: ssm.ParameterType.SECURE_STRING, // Use SecureString for sensitive data
+    });
+
+    // Output Parameter Store name
+    new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
+      value: envParameterStore.parameterName,
+      description: 'Parameter Store path for environment variables',
+    });
   }
 }
