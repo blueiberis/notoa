@@ -359,7 +359,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     });*/
     const envParameterStore = new ssm.CfnParameter(this, `${id}EnvParameterStore`, {
       name: `/attributes/${kebabId}`,
-      type: 'SecureString', // ✅ only here it works
+      type: 'String',
       value: 'placeholder',
       tier: 'Standard',
     });
