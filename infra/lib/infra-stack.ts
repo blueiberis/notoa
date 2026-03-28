@@ -361,7 +361,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     // --- Parameter Store for Environment Variables ---
     // Output Parameter Store name
     new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
-      value: envParameterStore.name || `/attributes/${kebabId}`,
+      value: envParameterStore.parameterName,
       description: 'Parameter Store path for environment variables',
     });
   }
