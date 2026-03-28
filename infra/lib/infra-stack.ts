@@ -371,6 +371,7 @@ const envParameterStore = new cdk.CfnResource(this, `${id}SecureParameter`, {
     Type: 'SecureString',
     Value: 'placeholder',
     Tier: 'Standard',
+    KeyId: 'alias/aws/ssm', 
   },
 });
     // --- Parameter Store for Environment Variables ---
