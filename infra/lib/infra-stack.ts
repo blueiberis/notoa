@@ -361,8 +361,11 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
 # OPENAI_API_KEY=your-openai-api-key-here
 `,
       tier: ssm.ParameterTier.STANDARD,
-      type: ssm.ParameterType.SECURE_STRING, // Use SecureString for sensitive data
     });
+    
+    // Manually set the type to SecureString since the CDK API has changed
+    const cfnParameter = envParameterStore.node.defaultChild as ssm.CfnParameter;
+    cfnParameter.type = 'SecureString';
 
     // Output Parameter Store name
     new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
