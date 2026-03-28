@@ -352,10 +352,11 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     });
 
     // --- Parameter Store for Environment Variables ---
-    const envParameterStore = new ssm.StringParameter(this, `${id}EnvParameterStore`, {
-      parameterName: `/attributes/${kebabId}`,
+    const envParameterStore = new ssm.CfnParameter(this, `${id}EnvParameterStore`, {
+      name: `/attributes/${kebabId}`,
+      type: 'SecureString',
       description: `Environment variables for ${kebabId} stack in KEY=VALUE format`,
-      stringValue: `# Environment Variables for ${kebabId}
+      value: `# Environment Variables for ${kebabId}
 # Add your environment variables in KEY=VALUE format, one per line
 # Update this parameter with your actual values:
 # aws ssm put-parameter --name "/attributes/${kebabId}" --value "$(cat .env)" --type SecureString --overwrite
@@ -364,16 +365,12 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
 AWS_ENV=${kebabId}
 # OPENAI_API_KEY=your-openai-api-key-here
 `,
-      tier: ssm.ParameterTier.STANDARD,
+      tier: 'Standard',
     });
-    
-    // Manually set the type to SecureString
-    const cfnParameter = envParameterStore.node.defaultChild as ssm.CfnParameter;
-    cfnParameter.addPropertyOverride('Type', 'SecureString');
 
     // Output Parameter Store name
     new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
-      value: envParameterStore.parameterName,
+      value: envParameterStore.name || `/attributes/${kebabId}`,
       description: 'Parameter Store path for environment variables',
     });
   }
