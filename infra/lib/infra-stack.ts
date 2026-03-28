@@ -386,7 +386,8 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
-        export async function handler(event) {
+        exports.handler = async function(event) {
+          // Use dynamic import for AWS SDK v3 (already available in Node 24 runtime)
           const { SSMClient, PutParameterCommand } = await import("@aws-sdk/client-ssm");
           const client = new SSMClient({});
 
@@ -401,7 +402,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
           }));
 
           return { PhysicalResourceId: name };
-        }
+        };
       `),
     });
 
