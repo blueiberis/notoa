@@ -394,14 +394,12 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/attributes/${kebabId}`],
     }));
 
-    new cr.Provider(this, 'SecureParamProvider', {
+    const provider = new cr.Provider(this, 'SecureParamProvider', {
       onEventHandler: secureParamLambda,
     });
 
     new cdk.CustomResource(this, 'MySecureParam', {
-      serviceToken: new cr.Provider(this, 'Provider', {
-        onEventHandler: secureParamLambda,
-      }).serviceToken,
+      serviceToken: provider.serviceToken,
       properties: {
         Name: `/attributes/${kebabId}`,
         Value: 'placeholder',
