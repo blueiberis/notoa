@@ -407,6 +407,11 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       `),
     });
 
+    secureParamLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ssm:PutParameter'],
+      resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/attributes/${kebabId}`],
+    }));
+
     new cr.Provider(this, 'SecureParamProvider', {
       onEventHandler: secureParamLambda,
     });
