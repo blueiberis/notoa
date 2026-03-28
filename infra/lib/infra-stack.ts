@@ -382,30 +382,42 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       description: 'Parameter Store path for environment variables',
     });
   }*/
-    const secureParamLambda = new lambda.Function(this, 'SecureParamLambda', {
-      runtime: lambda.Runtime.NODEJS_24_X,
-      timeout: cdk.Duration.seconds(30),
-      handler: 'index.handler',
-      code: lambda.Code.fromInline(`
-        exports.handler = async function(event) {
-          // Use dynamic import for AWS SDK v3 (already available in Node 24 runtime)
-          const { SSMClient, PutParameterCommand } = await import("@aws-sdk/client-ssm");
-          const client = new SSMClient({});
+const secureParamLambda = new lambda.Function(this, 'SecureParamLambda', {
+  runtime: lambda.Runtime.NODEJS_24_X,
+  timeout: cdk.Duration.seconds(30),
+  handler: 'index.handler',
+  code: lambda.Code.fromInline(`
+    exports.handler = async function(event) {
+      const { SSMClient, GetParameterCommand, PutParameterCommand } = await import("@aws-sdk/client-ssm");
+      const client = new SSMClient({});
 
-          const name = event.ResourceProperties.Name;
-          const value = event.ResourceProperties.Value;
+      const name = event.ResourceProperties.Name;
+      const value = event.ResourceProperties.Value;
 
+      try {
+        // Check if the parameter already exists
+        await client.send(new GetParameterCommand({ Name: name }));
+        // Exists, do nothing to preserve manual changes
+        console.log(\`Parameter "\${name}" already exists, skipping creation.\`);
+      } catch (err) {
+        if (err.name === 'ParameterNotFound') {
+          // Parameter doesn't exist, create it
           await client.send(new PutParameterCommand({
             Name: name,
             Type: "SecureString",
             Value: value,
-            Overwrite: true,
           }));
+          console.log(\`Parameter "\${name}" created successfully.\`);
+        } else {
+          // Unexpected error
+          throw err;
+        }
+      }
 
-          return { PhysicalResourceId: name };
-        };
-      `),
-    });
+      return { PhysicalResourceId: name };
+    };
+  `),
+});
 
     secureParamLambda.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ssm:PutParameter'],
