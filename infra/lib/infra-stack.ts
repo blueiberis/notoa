@@ -351,23 +351,24 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       description: 'CloudFront Distribution ID for cache invalidation',
     });
 
-    /*const envParameterStore = new ssm.StringParameter(this, `${id}EnvParameterStore`, {
+    const envParameterStore = new ssm.StringParameter(this, `${id}EnvParameterStore`, {
       parameterName: `/attributes/${kebabId}`,
       stringValue: 'placeholder',
       description: `Environment variables for ${kebabId}`,
       tier: ssm.ParameterTier.STANDARD,
-    });*/
+      type: ssm.ParameterType.SECURE_STRING,
+    });
     /*const envParameterStore = new ssm.CfnParameter(this, `${id}EnvParameterStore`, {
       name: `/attributes/${kebabId}`,
       type: 'String',
       value: 'placeholder',
       tier: 'Standard',
-    });
+    });*/
     // --- Parameter Store for Environment Variables ---
     // Output Parameter Store name
     new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
-      value: envParameterStore.name || `/attributes/${kebabId}`,
+      value: envParameterStore.pa || `/attributes/${kebabId}`,
       description: 'Parameter Store path for environment variables',
-    });*/
+    });
   }
 }
