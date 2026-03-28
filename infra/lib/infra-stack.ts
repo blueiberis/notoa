@@ -351,9 +351,13 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       description: 'CloudFront Distribution ID for cache invalidation',
     });
 
-    const envParameterStore = ssm.StringParameter.fromSecureStringParameterAttributes(this, `${id}EnvParameterStore`, {
+    const envParameterStore = new ssm.StringParameter(this, `${id}EnvParameterStore`, {
       parameterName: `/attributes/${kebabId}`,
+      stringValue: 'placeholder',
+      description: `Environment variables for ${kebabId}`,
+      tier: ssm.ParameterTier.STANDARD,
     });
+
     // --- Parameter Store for Environment Variables ---
     // Output Parameter Store name
     new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
