@@ -351,23 +351,14 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       description: 'CloudFront Distribution ID for cache invalidation',
     });
 
-    // --- Parameter Store for Environment Variables ---
-    const envParameterStore = new ssm.CfnParameter(this, `${id}EnvParameterStore`, {
-      name: `/attributes/${kebabId}`,
-      type: 'SecureString',
-      description: `Environment variables for ${kebabId} stack in KEY=VALUE format`,
-      value: `# Environment Variables for ${kebabId}
-# Add your environment variables in KEY=VALUE format, one per line
-# Update this parameter with your actual values:
-# aws ssm put-parameter --name "/attributes/${kebabId}" --value "$(cat .env)" --type SecureString --overwrite
-#
-# Example values:
-AWS_ENV=${kebabId}
-# OPENAI_API_KEY=your-openai-api-key-here
-`,
-      tier: 'Standard',
+    const envParameterStore = new ssm.StringParameter(this, `${id}EnvParameterStore`, {
+      parameterName: `/attributes/${kebabId}`,
+      stringValue: 'placeholder',
+      description: `Environment variables for ${kebabId}`,
+      tier: ssm.ParameterTier.STANDARD,
+      type: ssm.ParameterType.SECURE_STRING, // ✅ works here
     });
-
+    // --- Parameter Store for Environment Variables ---
     // Output Parameter Store name
     new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
       value: envParameterStore.name || `/attributes/${kebabId}`,
