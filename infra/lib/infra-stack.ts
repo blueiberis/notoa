@@ -11,7 +11,8 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
+//import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as cr from 'aws-cdk-lib/custom-resources';
 
 interface InfraStackProps extends cdk.StackProps {
   certArn: string;
@@ -364,7 +365,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       value: 'placeholder',
       tier: 'Standard',
     });*/
-const envParameterStore = new cdk.CfnResource(this, `${id}SecureParameter`, {
+/*const envParameterStore = new cdk.CfnResource(this, `${id}SecureParameter`, {
   type: 'AWS::SSM::Parameter',
   properties: {
     Name: `/attributes/${kebabId}`,
@@ -379,6 +380,43 @@ const envParameterStore = new cdk.CfnResource(this, `${id}SecureParameter`, {
     new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
       value: envParameterStore.ref || `/attributes/${kebabId}`,
       description: 'Parameter Store path for environment variables',
+    });
+  }*/
+    const secureParamLambda = new lambda.Function(this, 'SecureParamLambda', {
+      runtime: lambda.Runtime.NODEJS_24_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline(`
+        const AWS = require('aws-sdk');
+        const ssm = new AWS.SSM();
+
+        exports.handler = async (event) => {
+          const name = event.ResourceProperties.Name;
+          const value = event.ResourceProperties.Value;
+
+          await ssm.putParameter({
+            Name: name,
+            Type: 'SecureString',
+            Value: value,
+            Overwrite: true,
+          }).promise();
+
+          return { PhysicalResourceId: name };
+        };
+      `),
+    });
+
+    new cr.Provider(this, 'SecureParamProvider', {
+      onEventHandler: secureParamLambda,
+    });
+
+    new cdk.CustomResource(this, 'MySecureParam', {
+      serviceToken: new cr.Provider(this, 'Provider', {
+        onEventHandler: secureParamLambda,
+      }).serviceToken,
+      properties: {
+        Name: `/attributes/${kebabId}`,
+        Value: 'placeholder',
+      },
     });
   }
 }
