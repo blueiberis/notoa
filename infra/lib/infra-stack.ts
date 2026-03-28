@@ -384,6 +384,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
   }*/
     const secureParamLambda = new lambda.Function(this, 'SecureParamLambda', {
       runtime: lambda.Runtime.NODEJS_24_X,
+      timeout: cdk.Duration.seconds(30),
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
         exports.handler = async function(event) {
