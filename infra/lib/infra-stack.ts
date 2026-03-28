@@ -357,15 +357,19 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       description: `Environment variables for ${kebabId} stack in KEY=VALUE format`,
       stringValue: `# Environment Variables for ${kebabId}
 # Add your environment variables in KEY=VALUE format, one per line
-# Example:
+# Update this parameter with your actual values:
+# aws ssm put-parameter --name "/attributes/${kebabId}" --value "$(cat .env)" --type SecureString --overwrite
+#
+# Example values:
+AWS_ENV=${kebabId}
 # OPENAI_API_KEY=your-openai-api-key-here
 `,
       tier: ssm.ParameterTier.STANDARD,
     });
     
-    // Manually set the type to SecureString since the CDK API has changed
+    // Manually set the type to SecureString
     const cfnParameter = envParameterStore.node.defaultChild as ssm.CfnParameter;
-    cfnParameter.type = 'SecureString';
+    cfnParameter.addPropertyOverride('Type', 'SecureString');
 
     // Output Parameter Store name
     new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
