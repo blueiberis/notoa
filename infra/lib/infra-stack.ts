@@ -352,72 +352,42 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       description: 'CloudFront Distribution ID for cache invalidation',
     });
 
-    /*const envParameterStore = new ssm.StringParameter(this, `${id}EnvParameterStore`, {
-      parameterName: `/attributes/${kebabId}`,
-      stringValue: 'placeholder',
-      description: `Environment variables for ${kebabId}`,
-      tier: ssm.ParameterTier.STANDARD,
-      type: ssm.ParameterType.SECURE_STRING,
+    const secureParamLambda = new lambda.Function(this, 'SecureParamLambda', {
+      runtime: lambda.Runtime.NODEJS_24_X,
+      timeout: cdk.Duration.seconds(30),
+      handler: 'index.handler',
+      code: lambda.Code.fromInline(`
+        exports.handler = async function(event) {
+          const { SSMClient, GetParameterCommand, PutParameterCommand } = await import("@aws-sdk/client-ssm");
+          const client = new SSMClient({});
+
+          const name = event.ResourceProperties.Name;
+          const value = event.ResourceProperties.Value;
+
+          try {
+            // Check if the parameter already exists
+            await client.send(new GetParameterCommand({ Name: name }));
+            // Exists, do nothing to preserve manual changes
+            console.log(\`Parameter "\${name}" already exists, skipping creation.\`);
+          } catch (err) {
+            if (err.name === 'ParameterNotFound') {
+              // Parameter doesn't exist, create it
+              await client.send(new PutParameterCommand({
+                Name: name,
+                Type: "SecureString",
+                Value: value,
+              }));
+              console.log(\`Parameter "\${name}" created successfully.\`);
+            } else {
+              // Unexpected error
+              throw err;
+            }
+          }
+
+          return { PhysicalResourceId: name };
+        };
+      `),
     });
-    /*const envParameterStore = new ssm.CfnParameter(this, `${id}EnvParameterStore`, {
-      name: `/attributes/${kebabId}`,
-      type: 'String',
-      value: 'placeholder',
-      tier: 'Standard',
-    });*/
-/*const envParameterStore = new cdk.CfnResource(this, `${id}SecureParameter`, {
-  type: 'AWS::SSM::Parameter',
-  properties: {
-    Name: `/attributes/${kebabId}`,
-    Type: 'SecureString',
-    Value: 'placeholder',
-    Tier: 'Standard',
-    KeyId: 'alias/aws/ssm', 
-  },
-});
-    // --- Parameter Store for Environment Variables ---
-    // Output Parameter Store name
-    new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
-      value: envParameterStore.ref || `/attributes/${kebabId}`,
-      description: 'Parameter Store path for environment variables',
-    });
-  }*/
-const secureParamLambda = new lambda.Function(this, 'SecureParamLambda', {
-  runtime: lambda.Runtime.NODEJS_24_X,
-  timeout: cdk.Duration.seconds(30),
-  handler: 'index.handler',
-  code: lambda.Code.fromInline(`
-    exports.handler = async function(event) {
-      const { SSMClient, GetParameterCommand, PutParameterCommand } = await import("@aws-sdk/client-ssm");
-      const client = new SSMClient({});
-
-      const name = event.ResourceProperties.Name;
-      const value = event.ResourceProperties.Value;
-
-      try {
-        // Check if the parameter already exists
-        await client.send(new GetParameterCommand({ Name: name }));
-        // Exists, do nothing to preserve manual changes
-        console.log(\`Parameter "\${name}" already exists, skipping creation.\`);
-      } catch (err) {
-        if (err.name === 'ParameterNotFound') {
-          // Parameter doesn't exist, create it
-          await client.send(new PutParameterCommand({
-            Name: name,
-            Type: "SecureString",
-            Value: value,
-          }));
-          console.log(\`Parameter "\${name}" created successfully.\`);
-        } else {
-          // Unexpected error
-          throw err;
-        }
-      }
-
-      return { PhysicalResourceId: name };
-    };
-  `),
-});
 
     secureParamLambda.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ssm:PutParameter', 'ssm:GetParameter'],
