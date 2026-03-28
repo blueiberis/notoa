@@ -420,7 +420,7 @@ const secureParamLambda = new lambda.Function(this, 'SecureParamLambda', {
 });
 
     secureParamLambda.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['ssm:PutParameter'],
+      actions: ['ssm:PutParameter', 'ssm:GetParameter'],
       resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/attributes/${kebabId}`],
     }));
 
@@ -436,6 +436,12 @@ const secureParamLambda = new lambda.Function(this, 'SecureParamLambda', {
         Name: `/attributes/${kebabId}`,
         Value: 'placeholder',
       },
+    });
+
+    // Output Parameter Store name
+    new cdk.CfnOutput(this, `${id}EnvParameterStoreName`, {
+      value: `/attributes/${kebabId}`,
+      description: 'Parameter Store path for environment variables',
     });
   }
 }
