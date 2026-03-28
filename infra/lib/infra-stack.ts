@@ -386,22 +386,22 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
-        const AWS = require('aws-sdk');
-        const ssm = new AWS.SSM();
+        export async function handler(event) {
+          const { SSMClient, PutParameterCommand } = await import("@aws-sdk/client-ssm");
+          const client = new SSMClient({});
 
-        exports.handler = async (event) => {
           const name = event.ResourceProperties.Name;
           const value = event.ResourceProperties.Value;
 
-          await ssm.putParameter({
+          await client.send(new PutParameterCommand({
             Name: name,
-            Type: 'SecureString',
+            Type: "SecureString",
             Value: value,
             Overwrite: true,
-          }).promise();
+          }));
 
           return { PhysicalResourceId: name };
-        };
+        }
       `),
     });
 
