@@ -130,8 +130,7 @@ jobs:
             exit 1
           fi
           
-          echo "📋 Current SSM parameter content:"
-          echo "$VALUE"
+          echo "✅ SSM parameter found and accessible"
           
           # Define required keys for notoa project
           REQUIRED_KEYS="OPENAI_API_KEY"
