@@ -1,0 +1,195 @@
+import json
+import os
+import boto3
+import openai
+import whisper
+import tempfile
+import uuid
+from urllib.parse import unquote_plus
+from botocore.exceptions import ClientError
+
+# Initialize AWS clients
+s3_client = boto3.client('s3')
+ssm_client = boto3.client('ssm')
+
+# Get environment variables
+PARAMETER_NAME = os.environ.get('PARAMETER_NAME')
+REGION = os.environ.get('REGION')
+
+def get_openai_api_key():
+    """Get OpenAI API key from Parameter Store"""
+    try:
+        response = ssm_client.get_parameter(
+            Name=PARAMETER_NAME,
+            WithDecryption=True
+        )
+        parameter_value = response['Parameter']['Value']
+        
+        # Parse the parameter value to find OPENAI_API_KEY
+        for line in parameter_value.split('\n'):
+            if line.startswith('OPENAI_API_KEY='):
+                return line.split('=', 1)[1].strip()
+        
+        raise ValueError("OPENAI_API_KEY not found in parameter")
+        
+    except ClientError as e:
+        print(f"Error getting parameter from SSM: {e}")
+        raise
+    except Exception as e:
+        print(f"Error parsing parameter: {e}")
+        raise
+
+def download_file_from_s3(bucket, key, local_path):
+    """Download file from S3 to local path"""
+    try:
+        s3_client.download_file(bucket, key, local_path)
+        print(f"Downloaded {key} from {bucket} to {local_path}")
+        return True
+    except ClientError as e:
+        print(f"Error downloading file from S3: {e}")
+        return False
+
+def upload_file_to_s3(local_path, bucket, key):
+    """Upload file from local path to S3"""
+    try:
+        s3_client.upload_file(local_path, bucket, key)
+        print(f"Uploaded {local_path} to {bucket}/{key}")
+        return True
+    except ClientError as e:
+        print(f"Error uploading file to S3: {e}")
+        return False
+
+def transcribe_audio(audio_file_path, openai_api_key):
+    """Transcribe audio using OpenAI Whisper"""
+    try:
+        # Set OpenAI API key
+        openai.api_key = openai_api_key
+        
+        # Load Whisper model (using base model for balance of speed and accuracy)
+        print("Loading Whisper model...")
+        model = whisper.load_model("base")
+        
+        # Transcribe audio
+        print(f"Transcribing audio file: {audio_file_path}")
+        result = model.transcribe(audio_file_path)
+        
+        transcription = result['text']
+        print(f"Transcription completed: {transcription[:100]}...")
+        
+        return {
+            'text': transcription,
+            'language': result.get('language', 'unknown'),
+            'duration': result.get('segments', [{}])[0].get('end', 0) if result.get('segments') else 0
+        }
+        
+    except Exception as e:
+        print(f"Error transcribing audio: {e}")
+        raise
+
+def handler(event, context):
+    """Lambda handler for audio processing"""
+    try:
+        print(f"Received event: {json.dumps(event)}")
+        
+        # Get OpenAI API key
+        openai_api_key = get_openai_api_key()
+        print("Successfully retrieved OpenAI API key")
+        
+        # Extract request data
+        http_method = event.get('httpMethod', 'POST')
+        
+        if http_method == 'POST':
+            # Parse request body
+            body = json.loads(event.get('body', '{}'))
+            bucket = body.get('bucket')
+            key = body.get('key')
+            
+            if not bucket or not key:
+                return {
+                    'statusCode': 400,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Missing required parameters: bucket and key'
+                    })
+                }
+            
+            # Create temporary directory
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Download audio file from S3
+                audio_file_path = os.path.join(temp_dir, f"audio_{uuid.uuid4()}.wav")
+                
+                if not download_file_from_s3(bucket, key, audio_file_path):
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Failed to download audio file from S3'
+                        })
+                    }
+                
+                # Transcribe audio
+                transcription_result = transcribe_audio(audio_file_path, openai_api_key)
+                
+                # Save transcription to S3
+                transcription_key = f"transcriptions/{key.split('/')[-1].replace('.', '_')}_transcription.json"
+                transcription_path = os.path.join(temp_dir, "transcription.json")
+                
+                with open(transcription_path, 'w') as f:
+                    json.dump(transcription_result, f, indent=2)
+                
+                if upload_file_to_s3(transcription_path, bucket, transcription_key):
+                    return {
+                        'statusCode': 200,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'success': True,
+                            'transcription': transcription_result,
+                            'transcription_file': f"s3://{bucket}/{transcription_key}"
+                        })
+                    }
+                else:
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Failed to save transcription to S3'
+                        })
+                    }
+        
+        else:
+            return {
+                'statusCode': 405,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'error': 'Method not allowed'
+                })
+            }
+            
+    except Exception as e:
+        print(f"Error in handler: {e}")
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'error': 'Internal server error',
+                'message': str(e)
+            })
+        }

@@ -413,5 +413,41 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       value: `/attributes/${kebabId}`,
       description: 'Parameter Store path for environment variables',
     });
+
+    // --- Audio Processing Lambda Function ---
+    const audioProcessingFn = new lambda.DockerImageFunction(this, `${id}AudioProcessingFn`, {
+      functionName: `${kebabId}-audio-processing-fn`,
+      code: lambda.DockerImageCode.fromImageAsset('../services/audio-processing'),
+      memorySize: 2048,
+      timeout: cdk.Duration.minutes(15),
+      environment: {
+        PARAMETER_NAME: `/attributes/${kebabId}`,
+        REGION: this.region,
+      },
+      logGroup: new logs.LogGroup(this, `${id}AudioProcessingFnLogGroup`, {
+        logGroupName: `/aws/lambda/${kebabId}-audio-processing-fn`,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+    });
+
+    // Grant access to Parameter Store
+    audioProcessingFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ssm:GetParameter', 'ssm:GetParameters'],
+      resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/attributes/${kebabId}`],
+    }));
+
+    // Grant access to S3 bucket for audio files
+    uploadBucket.grantRead(audioProcessingFn);
+    uploadBucket.grantWrite(audioProcessingFn);
+
+    // Add API Gateway route for audio processing
+    recordings.addResource('process').addMethod('POST', new apigw.LambdaIntegration(audioProcessingFn, {
+      proxy: true,
+    }), {
+      authorizer: new apigw.CognitoUserPoolsAuthorizer(this, `${id}AudioProcessingAuthorizer`, {
+        cognitoUserPools: [userPool],
+      }),
+      authorizationType: apigw.AuthorizationType.COGNITO,
+    });
   }
 }

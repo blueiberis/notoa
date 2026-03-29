@@ -1,0 +1,11 @@
+{
+  "name": "audio-processing",
+  "version": "1.0.0",
+  "description": "Audio processing service using OpenAI Whisper",
+  "scripts": {
+    "build": "docker build -t audio-processing .",
+    "test": "python -m pytest tests/"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

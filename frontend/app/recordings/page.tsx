@@ -10,6 +10,14 @@ interface Recording {
   size: number;
   lastModified: string;
   name: string;
+  transcription?: {
+    text: string;
+    language: string;
+    duration: number;
+    transcriptionFile?: string;
+  };
+  transcriptionLoading?: boolean;
+  transcriptionError?: string;
 }
 
 interface ActiveRecording {
@@ -56,11 +64,11 @@ export default function RecordingsPage() {
     try {
       const response = await get(`${process.env.NEXT_PUBLIC_API_URL}/recordings`);
       const data = await handleApiResponse(response);
-      setRecordings(data.recordings || []);
+      const recordingsData = data.recordings || [];
       
       // Fetch presigned URLs for all recordings
       const urls: {[key: string]: string} = {};
-      for (const recording of data.recordings || []) {
+      for (const recording of recordingsData) {
         try {
           const urlResponse = await get(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${recording.id}/url`);
           const urlData = await handleApiResponse(urlResponse);
@@ -71,6 +79,35 @@ export default function RecordingsPage() {
         }
       }
       setRecordingUrls(urls);
+      
+      // Fetch transcriptions for all recordings
+      const recordingsWithTranscriptions = await Promise.all(
+        recordingsData.map(async (recording: Recording) => {
+          try {
+            // Try to fetch transcription from S3
+            const transcriptionKey = `transcriptions/${recording.key.split('/').pop()?.replace('.', '_')}_transcription.json`;
+            const transcriptionResponse = await get(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${recording.id}/transcription`);
+            const transcriptionData = await handleApiResponse(transcriptionResponse);
+            
+            return {
+              ...recording,
+              transcription: transcriptionData,
+              transcriptionLoading: false,
+              transcriptionError: undefined
+            };
+          } catch (err) {
+            // Transcription doesn't exist or failed to load
+            console.log('No transcription found for recording:', recording.id);
+            return {
+              ...recording,
+              transcriptionLoading: false,
+              transcriptionError: undefined
+            };
+          }
+        })
+      );
+      
+      setRecordings(recordingsWithTranscriptions);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch recordings');
     }
@@ -230,6 +267,41 @@ export default function RecordingsPage() {
     reader.readAsDataURL(audioBlob);
   };
 
+  const processAudioForTranscription = async (recording: Recording) => {
+    try {
+      // Update recording state to show loading
+      setRecordings(prev => prev.map(r => 
+        r.id === recording.id 
+          ? { ...r, transcriptionLoading: true, transcriptionError: undefined }
+          : r
+      ));
+
+      const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/process`, {
+        bucket: recording.url.split('/')[3], // Extract bucket from URL
+        key: recording.key
+      });
+
+      const result = await handleApiResponse(response);
+      
+      // Update recording with transcription data
+      setRecordings(prev => prev.map(r => 
+        r.id === recording.id 
+          ? { ...r, transcription: result.transcription, transcriptionLoading: false }
+          : r
+      ));
+
+      // Refresh recordings to get updated data
+      setTimeout(fetchRecordings, 2000);
+    } catch (err) {
+      console.error('Failed to process audio for transcription:', err);
+      setRecordings(prev => prev.map(r => 
+        r.id === recording.id 
+          ? { ...r, transcriptionLoading: false, transcriptionError: 'Failed to process audio' }
+          : r
+      ));
+    }
+  };
+
   const discardRecording = async () => {
     if (!activeRecording) return;
 
@@ -375,13 +447,58 @@ export default function RecordingsPage() {
                       setError(errorMessage);
                     }}
                   />
+                </div>
+                
+                {/* Transcription Section */}
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900">Transcription</h4>
+                    {!recording.transcription && !recording.transcriptionLoading && (
+                      <button
+                        onClick={() => processAudioForTranscription(recording)}
+                        className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                      >
+                        Generate Transcription
+                      </button>
+                    )}
+                  </div>
                   
-                  {audioErrors[recording.id] && (
-                    <div className="mt-2 p-2 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
-                      {audioErrors[recording.id]}
+                  {recording.transcriptionLoading && (
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Processing audio...</span>
+                    </div>
+                  )}
+                  
+                  {recording.transcriptionError && (
+                    <div className="text-sm text-red-600">
+                      {recording.transcriptionError}
+                    </div>
+                  )}
+                  
+                  {recording.transcription && (
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                        <span>Language: {recording.transcription.language}</span>
+                        <span>Duration: {Math.round(recording.transcription.duration)}s</span>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded text-sm">
+                        <p className="whitespace-pre-wrap">{recording.transcription.text}</p>
+                      </div>
+                      {recording.transcription.transcriptionFile && (
+                        <div className="text-xs text-gray-500">
+                          <span>Transcription saved to: {recording.transcription.transcriptionFile}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
+                
+                {audioErrors[recording.id] && (
+                  <div className="mt-2 p-2 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                    {audioErrors[recording.id]}
+                  </div>
+                )}
               </div>
             ))}
           </div>
