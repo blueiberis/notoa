@@ -98,6 +98,19 @@ def handler(event, context):
         # Extract request data
         http_method = event.get('httpMethod', 'POST')
         
+        # Handle CORS preflight request
+        if http_method == 'OPTIONS':
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+                    'Content-Type': 'application/json'
+                },
+                'body': ''
+            }
+        
         if http_method == 'POST':
             # Parse request body
             body = json.loads(event.get('body', '{}'))
