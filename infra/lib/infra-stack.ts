@@ -158,9 +158,11 @@ export class InfraStack extends cdk.Stack {
         allowMethods: [
           'GET',
           'POST',
+          'PUT',
+          'DELETE',
           'OPTIONS'
         ],
-        allowHeaders: ['Content-Type', 'Authorization'],
+        allowHeaders: ['Content-Type', 'Authorization', 'X-Amz-Date', 'X-Api-Key', 'X-Amz-Security-Token'],
         maxAge: cdk.Duration.days(1),
         allowCredentials: true,
       },
@@ -441,21 +443,13 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     uploadBucket.grantWrite(audioProcessingFn);
 
     // Add API Gateway route for audio processing
-    const processResource = recordings.addResource('process');
-    processResource.addMethod('POST', new apigw.LambdaIntegration(audioProcessingFn, {
+    recordings.addResource('process').addMethod('POST', new apigw.LambdaIntegration(audioProcessingFn, {
       proxy: true,
     }), {
       authorizer: new apigw.CognitoUserPoolsAuthorizer(this, `${id}AudioProcessingAuthorizer`, {
         cognitoUserPools: [userPool],
       }),
       authorizationType: apigw.AuthorizationType.COGNITO,
-    });
-    
-    // Add OPTIONS method for CORS preflight (no authorization required)
-    processResource.addMethod('OPTIONS', new apigw.LambdaIntegration(audioProcessingFn, {
-      proxy: true,
-    }), {
-      authorizationType: apigw.AuthorizationType.NONE,
     });
   }
 }
