@@ -111,37 +111,22 @@ jobs:
             stg)  SUFFIX=Stg ;;
             *)    SUFFIX=Dev ;;
           esac
-          STACK_NAME="notoa${SUFFIX}"
           PARAM_PATH="/attributes/notoa-${SUFFIX,,}"
           
           echo "🔍 Looking for SSM parameter: $PARAM_PATH"
           
-          # Get SSM parameter path from CloudFormation stack outputs
-          STACK_OUTPUT=$(aws cloudformation describe-stacks \
-            --stack-name "$STACK_NAME" \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='EnvParameterStoreName'].OutputValue" \
-            --output text 2>/dev/null || echo "")
-          
-          if [ -z "$STACK_OUTPUT" ]; then
-            echo "::error::Stack output 'EnvParameterStoreName' not found for stack: $STACK_NAME"
-            echo "::error::Make sure the stack is deployed and outputs the parameter path"
-            exit 1
-          fi
-          
-          echo "✅ Found SSM parameter path: $STACK_OUTPUT"
-          echo "📄 Fetching SSM parameter..."
-          
-          # Fetch SSM parameter
+          # Try to get the SSM parameter directly
           VALUE=$(aws ssm get-parameter \
-            --name "$STACK_OUTPUT" \
+            --name "$PARAM_PATH" \
             --region ${{ env.AWS_REGION }} \
+            --with-decryption \
             --query "Parameter.Value" \
             --output text 2>/dev/null || echo "")
           
           if [ -z "$VALUE" ]; then
-            echo "::error::SSM parameter is empty: $STACK_OUTPUT"
-            echo "::error::Create the parameter with: aws ssm put-parameter --name \"$STACK_OUTPUT\" --value \"\$(cat .env)\" --type String --overwrite"
+            echo "::error::SSM parameter not found or empty: $PARAM_PATH"
+            echo "::error::Create the parameter with:"
+            echo "::error::aws ssm put-parameter --name \"$PARAM_PATH\" --value \"\$(cat .env)\" --type SecureString --overwrite"
             exit 1
           fi
           
@@ -159,7 +144,7 @@ jobs:
             if echo "$VALUE" | grep -q "^$key="; then
               echo "✅ $key: Found"
             else
-              echo "::error::SSM parameter $STACK_OUTPUT: required key \"$key\" is missing"
+              echo "::error::SSM parameter $PARAM_PATH: required key \"$key\" is missing"
               echo "::error::Expected format: $key=your_value"
               VALIDATION_FAILED=true
             fi
