@@ -354,6 +354,70 @@ export const handler = createHandler('recordings-service')(async (event: LambdaE
     };
   }
 
+  // GET /recordings/{id}/transcription - Get transcription for recording
+  if (httpMethod === "GET" && path && path.match(/^\/recordings\/[^\/]+\/transcription$/)) {
+    const recordingId = path.split('/')[2];
+    
+    try {
+      // Get recording from DynamoDB
+      const getResult = await ddbClient.send(new GetCommand({
+        TableName: RECORDINGS_TABLE,
+        Key: { id: recordingId, userId }
+      }));
+      
+      if (!getResult.Item || getResult.Item.userId !== userId) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ message: "Recording not found" })
+        };
+      }
+
+      const recording = getResult.Item as RecordingMetadata;
+      if (!recording.s3Key) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ message: "Recording file not found" })
+        };
+      }
+
+      // Try to get transcription from S3
+      const transcriptionKey = `transcriptions/${recording.s3Key.split('/').pop()?.replace('.', '_')}_transcription.json`;
+      
+      try {
+        const transcriptionResult = await s3.send(new GetObjectCommand({
+          Bucket: BUCKET,
+          Key: transcriptionKey
+        }));
+
+        const transcriptionData = await transcriptionResult.Body?.transformToString();
+        
+        if (!transcriptionData) {
+          return {
+            statusCode: 404,
+            body: JSON.stringify({ message: "Transcription not found" })
+          };
+        }
+
+        const transcription = JSON.parse(transcriptionData);
+        
+        return {
+          statusCode: 200,
+          body: JSON.stringify(transcription)
+        };
+      } catch (s3Error) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ message: "Transcription not found" })
+        };
+      }
+    } catch (error) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ message: "Failed to get transcription", error: (error as Error).message })
+      };
+    }
+  }
+
   return {
     statusCode: 404,
     body: JSON.stringify({ message: "Endpoint not found" })
