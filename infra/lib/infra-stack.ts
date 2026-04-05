@@ -278,38 +278,38 @@ export class InfraStack extends cdk.Stack {
       authorizer,
     });
     
-    const recordingsStart = recordings.addResource('start');
+    const recordingsStart = recordings.addResource('recordings-start');
     recordingsStart.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
     
-    const recordingId = recordings.addResource('{recordingId}');
-    const recordingPause = recordingId.addResource('pause');
+    const recordingId = recordings.addResource('recording-id');
+    const recordingPause = recordingId.addResource('recording-pause');
     recordingPause.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
     
-    const recordingResume = recordingId.addResource('resume');
+    const recordingResume = recordingId.addResource('recording-resume');
     recordingResume.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
     
-    const recordingSave = recordingId.addResource('save');
+    const recordingSave = recordingId.addResource('recording-save');
     recordingSave.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
     
-    const recordingDiscard = recordingId.addResource('discard');
+    const recordingDiscard = recordingId.addResource('recording-discard');
     recordingDiscard.addMethod('DELETE', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
     
-    const recordingUrl = recordingId.addResource('url');
+    const recordingUrl = recordingId.addResource('recording-url');
     recordingUrl.addMethod('GET', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
@@ -339,7 +339,6 @@ export class InfraStack extends cdk.Stack {
         }],
       });
     }
-
     // --- Add OPTIONS for each resource to enable CORS ---
     [notes, upload, recordings, recordingsStart, recordingPause, recordingResume, recordingSave, recordingDiscard, recordingUrl].forEach(addOptions);
 
