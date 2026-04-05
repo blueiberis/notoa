@@ -162,7 +162,7 @@ export class InfraStack extends cdk.Stack {
           'DELETE',
           'OPTIONS'
         ],
-        allowHeaders: ['Content-Type', 'Authorization', 'X-Amz-Date', 'X-Api-Key', 'X-Amz-Security-Token'],
+        allowHeaders: ['Content-Type', 'Authorization', 'X-Amz-Date', 'X-Api-Key', 'X-Amz-Security-Token', 'X-Amz-User-Agent'],
         maxAge: cdk.Duration.days(1),
         allowCredentials: true,
       },
@@ -314,6 +314,34 @@ export class InfraStack extends cdk.Stack {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
+
+    // Helper to add OPTIONS method (preflight) for a resource
+    function addOptions(resource: apigw.IResource) {
+      resource.addMethod('OPTIONS', new apigw.MockIntegration({
+        integrationResponses: [{
+          statusCode: '200',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Headers': `'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'`,
+            'method.response.header.Access-Control-Allow-Origin': `'https://${appUrl}'`,
+            'method.response.header.Access-Control-Allow-Methods': `'GET,POST,PUT,DELETE,OPTIONS'`,
+          },
+        }],
+        passthroughBehavior: apigw.PassthroughBehavior.NEVER,
+        requestTemplates: { 'application/json': '{"statusCode": 200}' },
+      }), {
+        methodResponses: [{
+          statusCode: '200',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Headers': true,
+            'method.response.header.Access-Control-Allow-Origin': true,
+            'method.response.header.Access-Control-Allow-Methods': true,
+          },
+        }],
+      });
+    }
+
+    // --- Add OPTIONS for each resource to enable CORS ---
+    [notes, upload, recordings, recordingsStart, recordingPause, recordingResume, recordingSave, recordingDiscard, recordingUrl].forEach(addOptions);
 
     // --- API Gateway Custom Domain ---
     const apiDomain = new apigw.DomainName(this, `${id}ApiDomain`, {
