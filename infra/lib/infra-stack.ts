@@ -315,36 +315,6 @@ export class InfraStack extends cdk.Stack {
       authorizer,
     });
 
-    // Helper to add OPTIONS method (preflight) for a resource
-    function addOptions(resource: apigw.IResource, prefix: string) {
-      resource.addMethod('OPTIONS', new apigw.MockIntegration({
-        integrationResponses: [{
-          statusCode: '200',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Headers': `'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'`,
-            'method.response.header.Access-Control-Allow-Origin': `'https://${appUrl}'`,
-            'method.response.header.Access-Control-Allow-Methods': `'GET,POST,PUT,DELETE,OPTIONS'`,
-          },
-        }],
-        passthroughBehavior: apigw.PassthroughBehavior.NEVER,
-        requestTemplates: { 'application/json': '{"statusCode": 200}' },
-      }), {
-        methodResponses: [{
-          statusCode: '200',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Headers': true,
-            'method.response.header.Access-Control-Allow-Origin': true,
-            'method.response.header.Access-Control-Allow-Methods': true,
-          },
-        }],
-        operationName: `${prefix}-method-options`,
-      });
-    }
-    // --- Add OPTIONS for each resource to enable CORS ---
-    [notes, upload, recordings, recordingsStart, recordingPause, recordingResume, recordingSave, recordingDiscard, recordingUrl].forEach((resource, index) => {
-      addOptions(resource, ['notes', 'upload', 'recordings', 'recordings-start', 'recording-pause', 'recording-resume', 'recording-save', 'recording-discard', 'recording-url'][index]);
-    });
-
     // --- API Gateway Custom Domain ---
     const apiDomain = new apigw.DomainName(this, `${id}ApiDomain`, {
       domainName: apiUrl,
