@@ -316,7 +316,7 @@ export class InfraStack extends cdk.Stack {
     });
 
     // Helper to add OPTIONS method (preflight) for a resource
-    function addOptions(resource: apigw.IResource) {
+    function addOptions(resource: apigw.IResource, prefix: string) {
       resource.addMethod('OPTIONS', new apigw.MockIntegration({
         integrationResponses: [{
           statusCode: '200',
@@ -337,10 +337,13 @@ export class InfraStack extends cdk.Stack {
             'method.response.header.Access-Control-Allow-Methods': true,
           },
         }],
+        operationName: `${prefix}-method-options`,
       });
     }
     // --- Add OPTIONS for each resource to enable CORS ---
-    [notes, upload, recordings, recordingsStart, recordingPause, recordingResume, recordingSave, recordingDiscard, recordingUrl].forEach(addOptions);
+    [notes, upload, recordings, recordingsStart, recordingPause, recordingResume, recordingSave, recordingDiscard, recordingUrl].forEach((resource, index) => {
+      addOptions(resource, ['notes', 'upload', 'recordings', 'recordings-start', 'recording-pause', 'recording-resume', 'recording-save', 'recording-discard', 'recording-url'][index]);
+    });
 
     // --- API Gateway Custom Domain ---
     const apiDomain = new apigw.DomainName(this, `${id}ApiDomain`, {
