@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 
 # Set the handler
-CMD ["app.handler"]
+CMD ["app.handler.handler"]
