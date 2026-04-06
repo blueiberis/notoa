@@ -55,6 +55,7 @@ jobs:
             echo "NEXT_PUBLIC_API_URL=https://api.dev.notoa.tech" >> $GITHUB_ENV
             echo "NEXT_PUBLIC_CLOUDFRONT_URL=https://app.dev.notoa.tech" >> $GITHUB_ENV
             echo "BUCKET_NAME=notoa-dev-frontend" >> $GITHUB_ENV
+            echo "BUCKET_NAME_UPLOADS=notoa-dev-uploads" >> $GITHUB_ENV
             echo "STACK_NAME=NotoaDev" >> $GITHUB_ENV
             echo "DISTRIBUTION_ID=devDistributionId" >> $GITHUB_ENV
           elif [ "${{ inputs.environment }}" == "stg" ]; then
@@ -64,6 +65,7 @@ jobs:
             echo "NEXT_PUBLIC_API_URL=https://api.stg.notoa.tech" >> $GITHUB_ENV
             echo "NEXT_PUBLIC_CLOUDFRONT_URL=https://app.stg.notoa.tech" >> $GITHUB_ENV
             echo "BUCKET_NAME=notoa-stg-frontend" >> $GITHUB_ENV
+            echo "BUCKET_NAME_UPLOADS=notoa-stg-uploads" >> $GITHUB_ENV
             echo "STACK_NAME=NotoaStg" >> $GITHUB_ENV
             echo "DISTRIBUTION_ID=stgDistributionId" >> $GITHUB_ENV
           else # prod
@@ -73,6 +75,7 @@ jobs:
             echo "NEXT_PUBLIC_API_URL=https://api.notoa.tech" >> $GITHUB_ENV
             echo "NEXT_PUBLIC_CLOUDFRONT_URL=https://app.notoa.tech" >> $GITHUB_ENV
             echo "BUCKET_NAME=notoa-prod-frontend" >> $GITHUB_ENV
+            echo "BUCKET_NAME_UPLOADS=notoa-prod-uploads" >> $GITHUB_ENV
             echo "STACK_NAME=NotoaProd" >> $GITHUB_ENV
             echo "DISTRIBUTION_ID=E20M3U6VZEJA3I" >> $GITHUB_ENV
           fi
@@ -211,7 +214,7 @@ jobs:
           echo "NEXT_PUBLIC_USER_POOL_CLIENT_ID=${{ env.NEXT_PUBLIC_USER_POOL_CLIENT_ID }}" >> .env.local
           echo "NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}" >> .env.local
           echo "NEXT_PUBLIC_CLOUDFRONT_URL=${{ env.NEXT_PUBLIC_CLOUDFRONT_URL }}" >> .env.local
-          echo "NEXT_PUBLIC_AWS_S3_BUCKET=${{ env.BUCKET_NAME }}" >> .env.local
+          echo "NEXT_PUBLIC_AWS_S3_BUCKET_UPLOADS=${{ env.BUCKET_NAME_UPLOADS }}" >> .env.local
           
           npm run build
 

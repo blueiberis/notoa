@@ -281,7 +281,7 @@ export default function RecordingsPage() {
 
       const envVars = getEnvVariables();
       const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${recording.id}/process`, {
-        bucket: envVars.s3Bucket,
+        bucket: envVars.s3BucketUploads,
         key: recording.key
       });
 

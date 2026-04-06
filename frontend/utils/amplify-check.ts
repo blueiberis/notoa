@@ -42,6 +42,6 @@ export function getEnvVariables() {
     apiUrl: process.env.NEXT_PUBLIC_API_URL,
     cloudfrontUrl: process.env.NEXT_PUBLIC_CLOUDFRONT_URL,
     region: process.env.NEXT_PUBLIC_REGION,
-    s3Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET || 'notoa-uploads',
+    s3BucketUploads: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_UPLOADS || 'notoa-uploads',
   };
 }
