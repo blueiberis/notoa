@@ -36,6 +36,16 @@ export class InfraStack extends cdk.Stack {
     const appUrl = `app.${props.domainName}`;
     const adminUrl = `admin.${props.domainName}`;
     const apiUrl = `api.${props.domainName}`;
+    const ecrUri = this.node.tryGetContext('ecrUri') || '';
+    const imageTag = this.node.tryGetContext('imageTag') || '';
+
+    if (!ecrUri) {
+      throw new Error('ECR URI not provided. Pass via CDK context: -c ecrUri=...');
+    }
+
+    if (!imageTag) {
+      throw new Error('Image tag not provided. Pass via CDK context: -c imageTag=...');
+    }
 
     // --- ACM Certificate ---
     const certificate = certificatemanager.Certificate.fromCertificateArn(
@@ -425,14 +435,12 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
 
     // --- Audio Processing Lambda Function ---
     // Create ECR repository with proper naming
-    /*const audioProcessingRepo = new ecr.Repository(this, 'AudioProcessingRepo', {
-      repositoryName: `${kebabId}-audio-processing`,
-    });*/
+    const audioProcessingRepo = ecr.Repository.fromRepositoryArn(this, `${id}ImportedRepo`, ecrUri);
 
     const audioProcessingFn = new lambda.DockerImageFunction(this, `${id}AudioProcessingFn`, {
       functionName: `${kebabId}-audio-processing-fn`,
-      code: lambda.DockerImageCode.fromImageAsset('../services/audio-processing', {
-        assetName: `${kebabId}-audio-processing`,
+      code: lambda.DockerImageCode.fromEcr(audioProcessingRepo, {
+        tag: imageTag,
       }),
       memorySize: 2048,
       timeout: cdk.Duration.minutes(15),
