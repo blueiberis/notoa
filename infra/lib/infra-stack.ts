@@ -434,10 +434,10 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     });
 
     // --- Audio Processing Lambda Function ---
-    // Create ECR repository with proper naming
-    const audioProcessingRepo = ecr.Repository.fromRepositoryArn(this, `${id}ImportedRepo`,
-      `arn:aws:ecr:${this.region}:${this.account}:repository/${audioProcessingRepoName}`
-    );
+    const audioProcessingRepo = ecr.Repository.fromRepositoryAttributes(this, `${id}ImportedRepo`, {
+      repositoryArn: `arn:aws:ecr:${this.region}:${this.account}:repository/${audioProcessingRepoName}`,
+      repositoryName: audioProcessingRepoName,
+    });
 
     const audioProcessingFn = new lambda.DockerImageFunction(this, `${id}AudioProcessingFn`, {
       functionName: `${kebabId}-audio-processing-fn`,
