@@ -1,6 +1,7 @@
 export interface ApiResponse {
   statusCode: number;
   body: string;
+  headers?: Record<string, string>;
 }
 
 export interface LambdaEvent {
@@ -53,22 +54,61 @@ export class LambdaHandler {
     console.log(JSON.stringify(logEntry));
   }
 
+  // --- CORS helper ---
+  private corsHeaders(origin?: string): Record<string, string> {
+    const allowedOrigins = [
+      "https://app.notoa.tech",
+      "https://admin.notoa.tech",
+    ];
+
+    const resolvedOrigin =
+      origin && allowedOrigins.includes(origin)
+        ? origin
+        : allowedOrigins[0]; // safe fallback
+
+    return {
+      "Access-Control-Allow-Origin": resolvedOrigin,
+      "Access-Control-Allow-Credentials": "true",
+    };
+  }
+
   // --- Centralized error handling ---
-  private handleError(error: Error, context?: string): ApiResponse {
+  private handleError(error: Error, context?: string, origin?: string): ApiResponse {
     this.log("ERROR", { error: error.message, stack: error.stack, context });
+
     return {
       statusCode: 500,
-      body: JSON.stringify({ message: "Internal server error", error: error.message }),
+      headers: this.corsHeaders(origin),
+      body: JSON.stringify({
+        message: "Internal server error",
+        error: error.message,
+      }),
     };
   }
 
   // --- Simplified success / error helpers ---
-  protected success(data: any, statusCode: number = 200): ApiResponse {
-    return { statusCode, body: JSON.stringify(data) };
+  protected success(
+    data: any,
+    statusCode: number = 200,
+    origin?: string
+  ): ApiResponse {
+    return {
+      statusCode,
+      headers: this.corsHeaders(origin),
+      body: JSON.stringify(data),
+    };
   }
 
-  protected error(message: string, statusCode: number = 400): ApiResponse {
-    return { statusCode, body: JSON.stringify({ message }) };
+  protected error(
+    message: string,
+    statusCode: number = 400,
+    origin?: string
+  ): ApiResponse {
+    return {
+      statusCode,
+      headers: this.corsHeaders(origin),
+      body: JSON.stringify({ message }),
+    };
   }
 
   // --- Get user claims from API Gateway authorizer ---
@@ -85,6 +125,8 @@ export class LambdaHandler {
     ) => Promise<ApiResponse>
   ): Handler {
     return async (event: LambdaEvent, context: LambdaContext): Promise<ApiResponse> => {
+      const origin = event.headers?.origin || event.headers?.Origin;
+
       try {
         this.log("REQUEST_RECEIVED", {
           httpMethod: event.httpMethod,
@@ -108,9 +150,16 @@ export class LambdaHandler {
           requestId: context.awsRequestId,
         });
 
-        return result;
+        // Ensure ALL responses include CORS headers
+        return {
+          ...result,
+          headers: {
+            ...(result.headers || {}),
+            ...this.corsHeaders(origin),
+          },
+        };
       } catch (error) {
-        return this.handleError(error as Error, "main_handler");
+        return this.handleError(error as Error, "main_handler", origin);
       }
     };
   }
