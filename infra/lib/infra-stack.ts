@@ -11,6 +11,7 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 //import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as cr from 'aws-cdk-lib/custom-resources';
 
@@ -423,6 +424,11 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     });
 
     // --- Audio Processing Lambda Function ---
+    // Create ECR repository with proper naming
+    const audioProcessingRepo = new ecr.Repository(this, 'AudioProcessingRepo', {
+      repositoryName: `${kebabId}-audio-processing`,
+    });
+
     const audioProcessingFn = new lambda.DockerImageFunction(this, `${id}AudioProcessingFn`, {
       functionName: `${kebabId}-audio-processing-fn`,
       code: lambda.DockerImageCode.fromImageAsset('../services/audio-processing'),
