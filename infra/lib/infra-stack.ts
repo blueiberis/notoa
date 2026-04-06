@@ -446,9 +446,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     recordings.addResource('process').addMethod('POST', new apigw.LambdaIntegration(audioProcessingFn, {
       proxy: true,
     }), {
-      authorizer: new apigw.CognitoUserPoolsAuthorizer(this, `${id}AudioProcessingAuthorizer`, {
-        cognitoUserPools: [userPool],
-      }),
+      authorizer,
       authorizationType: apigw.AuthorizationType.COGNITO,
     });
   }
