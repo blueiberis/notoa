@@ -9,6 +9,9 @@ RUN yum update -y && \
     ffmpeg \
     && yum clean all
 
+# Upgrade build tooling FIRST (this fixes pkg_resources error)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
