@@ -97,7 +97,7 @@ jobs:
           aws-region: us-east-1
           role-session-name: GitHubActionsDeploy
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image for Audio Processing
         run: |
           IMAGE_TAG=${COMMIT_HASH::7}
           REPO_NAME=notoa-${{ inputs.environment }}-audio-processing
@@ -129,8 +129,8 @@ jobs:
           docker push $ECR_URI:$IMAGE_TAG
           docker push $ECR_URI:latest
 
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-          echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
+          echo "AUDIO_PROCESSING_IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "AUDIO_PROCESSING_REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
 
       # Deploy CDK stack
       - name: Deploy CDK
@@ -138,7 +138,7 @@ jobs:
           cd infra
           npm install
           npx cdk deploy --require-approval never \
-            -c ecrUri=$ECR_URI -c imageTag=$IMAGE_TAG
+            -c audioProcessingRepoName=$AUDIO_PROCESSING_REPO_NAME -c audioProcessingImageTag=$AUDIO_PROCESSING_IMAGE_TAG
 
       - name: Validate SSM attributes parameter
         run: |
