@@ -1,11 +1,10 @@
 import json
 import os
 import boto3
-import openai
-import whisper
 import tempfile
 import uuid
 from botocore.exceptions import ClientError
+from openai import OpenAI
 
 # Initialize AWS clients
 s3_client = boto3.client('s3')
@@ -53,18 +52,24 @@ def upload_file_to_s3(local_path, bucket, key):
 
 
 def transcribe_audio(audio_file_path, openai_api_key):
-    """Transcribe audio using Whisper"""
+    """Transcribe audio using OpenAI API"""
     try:
-        openai.api_key = openai_api_key
-        print("Loading Whisper model...")
-        model = whisper.load_model("base")
+        client = OpenAI(api_key=openai_api_key)
+
         print(f"Transcribing audio file: {audio_file_path}")
-        result = model.transcribe(audio_file_path)
+
+        with open(audio_file_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="gpt-4o-mini-transcribe",
+                file=audio_file
+            )
+
         return {
-            "text": result['text'],
-            "language": result.get("language", "unknown"),
-            "duration": result.get("segments", [{}])[0].get("end", 0) if result.get("segments") else 0
+            "text": transcript.text,
+            "language": "unknown",
+            "duration": 0
         }
+
     except Exception as e:
         print(f"Error transcribing audio: {e}")
         raise
@@ -74,15 +79,15 @@ def handler(event, context):
     """Lambda handler for audio processing"""
     try:
         print(f"Received event: {json.dumps(event)}")
-        
+
         # Get OpenAI API key
         openai_api_key = get_openai_api_key()
         print("Successfully retrieved OpenAI API key")
-        
+
         # Extract request data
         http_method = event.get('httpMethod', 'POST')
         path = event.get('path', '')
-        
+
         # Handle CORS preflight request
         if http_method == 'OPTIONS':
             return {
@@ -95,22 +100,20 @@ def handler(event, context):
                 },
                 'body': ''
             }
-        
+
         if http_method == 'POST':
-            # Extract recording ID from path
-            # Expected path: /recordings/{recording-id}/process
             path_parts = path.strip('/').split('/')
             print(f"Path parts: {path_parts}")
-            
+
             if len(path_parts) >= 3 and path_parts[0] == 'recordings' and path_parts[2] == 'process':
                 recording_id = path_parts[1]
                 print(f"Extracted recording ID: {recording_id}")
-                
+
                 # Parse request body
                 body = json.loads(event.get('body', '{}'))
                 bucket = body.get('bucket')
                 key = body.get('key')
-                
+
                 if not bucket or not key:
                     return {
                         'statusCode': 400,
@@ -124,9 +127,11 @@ def handler(event, context):
                             'error': 'Missing required parameters: bucket and key'
                         })
                     }
-                
+
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    audio_file_path = os.path.join(temp_dir, f"audio_{uuid.uuid4()}.wav")
+                    local_filename = key.split('/')[-1]
+                    audio_file_path = os.path.join(temp_dir, local_filename)
+
                     if not download_file_from_s3(bucket, key, audio_file_path):
                         return {
                             'statusCode': 500,
@@ -140,15 +145,15 @@ def handler(event, context):
                                 'error': 'Failed to download audio file from S3'
                             })
                         }
-                    
+
                     transcription_result = transcribe_audio(audio_file_path, openai_api_key)
-                    
-                    transcription_key = f"transcriptions/{key.split('/')[-1].replace('.', '_')}_transcription.json"
+
+                    transcription_key = f"transcriptions/{local_filename.replace('.', '_')}_transcription.json"
                     transcription_path = os.path.join(temp_dir, "transcription.json")
-                    
+
                     with open(transcription_path, 'w') as f:
                         json.dump(transcription_result, f, indent=2)
-                    
+
                     if upload_file_to_s3(transcription_path, bucket, transcription_key):
                         return {
                             'statusCode': 200,
