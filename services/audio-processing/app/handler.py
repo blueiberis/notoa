@@ -178,19 +178,44 @@ def handler(event, context):
                             })
                         }
             else:
-
-            if upload_file_to_s3(transcription_path, bucket, transcription_key):
                 return {
-                    "statusCode": 200,
-                    "body": json.dumps({
-                        "success": True,
-                        "transcription": transcription_result,
-                        "transcription_file": f"s3://{bucket}/{transcription_key}"
+                    'statusCode': 400,
+                    'headers': {
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                        'Access-Control-Allow-Methods': 'POST,OPTIONS',
+                        'Content-Type': 'application/json'
+                    },
+                    'body': json.dumps({
+                        'error': 'Invalid path format. Expected: /recordings/{recording-id}/process'
                     })
                 }
-            else:
-                return {"statusCode": 500, "body": json.dumps({"error": "Failed to save transcription to S3"})}
+        else:
+            return {
+                'statusCode': 405,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({
+                    'error': 'Method not allowed'
+                })
+            }
 
     except Exception as e:
         print(f"Error in handler: {e}")
-        return {"statusCode": 500, "body": json.dumps({"error": "Internal server error", "message": str(e)})}
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                'Access-Control-Allow-Methods': 'POST,OPTIONS',
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps({
+                'error': 'Internal server error',
+                'message': str(e)
+            })
+        }
