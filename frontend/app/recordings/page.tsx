@@ -488,7 +488,7 @@ export default function RecordingsPage() {
                         <span>Language: {recording.transcription.language}</span>
                         <span>Duration: {Math.round(recording.transcription.duration)}s</span>
                       </div>
-                      <div className="bg-gray-50 p-3 rounded text-sm">
+                      <div className="bg-white border border-gray-200 p-3 rounded text-sm text-gray-900">
                         <p className="whitespace-pre-wrap">{recording.transcription.text}</p>
                       </div>
                       {recording.transcription.transcriptionFile && (
