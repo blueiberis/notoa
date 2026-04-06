@@ -211,6 +211,7 @@ jobs:
           echo "NEXT_PUBLIC_USER_POOL_CLIENT_ID=${{ env.NEXT_PUBLIC_USER_POOL_CLIENT_ID }}" >> .env.local
           echo "NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}" >> .env.local
           echo "NEXT_PUBLIC_CLOUDFRONT_URL=${{ env.NEXT_PUBLIC_CLOUDFRONT_URL }}" >> .env.local
+          echo "NEXT_PUBLIC_AWS_S3_BUCKET=${{ env.BUCKET_NAME }}" >> .env.local
           
           npm run build
 

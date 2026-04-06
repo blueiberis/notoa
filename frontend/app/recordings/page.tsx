@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { getCurrentSession, get, post, del, handleApiResponse } from '@/utils/auth';
+import { getEnvVariables } from '../../utils/amplify-check';
 
 interface Recording {
   id: string;
@@ -278,8 +279,9 @@ export default function RecordingsPage() {
           : r
       ));
 
+      const envVars = getEnvVariables();
       const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${recording.id}/process`, {
-        bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET || 'notoa-uploads',
+        bucket: envVars.s3Bucket,
         key: recording.key
       });
 
