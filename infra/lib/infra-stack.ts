@@ -425,13 +425,15 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
 
     // --- Audio Processing Lambda Function ---
     // Create ECR repository with proper naming
-    const audioProcessingRepo = new ecr.Repository(this, 'AudioProcessingRepo', {
+    /*const audioProcessingRepo = new ecr.Repository(this, 'AudioProcessingRepo', {
       repositoryName: `${kebabId}-audio-processing`,
-    });
+    });*/
 
     const audioProcessingFn = new lambda.DockerImageFunction(this, `${id}AudioProcessingFn`, {
       functionName: `${kebabId}-audio-processing-fn`,
-      code: lambda.DockerImageCode.fromImageAsset('../services/audio-processing'),
+      code: lambda.DockerImageCode.fromImageAsset('../services/audio-processing', {
+        assetName: `${kebabId}-audio-processing`,
+      }),
       memorySize: 2048,
       timeout: cdk.Duration.minutes(15),
       environment: {

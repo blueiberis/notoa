@@ -97,39 +97,39 @@ jobs:
           aws-region: us-east-1
           role-session-name: GitHubActionsDeploy
 
-      - name: Build and push Docker image
-        run: |
-          IMAGE_TAG=${COMMIT_HASH::7}
-          REPO_NAME=notoa-${{ inputs.environment }}-audio-processing
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          ECR_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME
+      # - name: Build and push Docker image
+      #   run: |
+      #     IMAGE_TAG=${COMMIT_HASH::7}
+      #     REPO_NAME=notoa-${{ inputs.environment }}-audio-processing
+      #     ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      #     ECR_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME
 
-          echo "Using tag: $IMAGE_TAG"
+      #     echo "Using tag: $IMAGE_TAG"
 
-          # Login to ECR
-          aws ecr get-login-password --region $AWS_REGION \
-            | docker login --username AWS --password-stdin $ECR_URI
+      #     # Login to ECR
+      #     aws ecr get-login-password --region $AWS_REGION \
+      #       | docker login --username AWS --password-stdin $ECR_URI
 
-          # Build image
-          docker build -t $REPO_NAME ./services/audio-processing
+      #     # Build image
+      #     docker build -t $REPO_NAME ./services/audio-processing
 
-          # Tag image
-          docker tag $REPO_NAME:latest $ECR_URI:$IMAGE_TAG
-          docker tag $REPO_NAME:latest $ECR_URI:latest
+      #     # Tag image
+      #     docker tag $REPO_NAME:latest $ECR_URI:$IMAGE_TAG
+      #     docker tag $REPO_NAME:latest $ECR_URI:latest
 
-          # Get or create repo
-          aws ecr describe-repositories \
-            --repository-names $REPO_NAME \
-            --region $AWS_REGION \
-            || aws ecr create-repository \
-                --repository-name $REPO_NAME \
-                --region $AWS_REGION
+      #     # Get or create repo
+      #     aws ecr describe-repositories \
+      #       --repository-names $REPO_NAME \
+      #       --region $AWS_REGION \
+      #       || aws ecr create-repository \
+      #           --repository-name $REPO_NAME \
+      #           --region $AWS_REGION
 
-          # Push
-          docker push $ECR_URI:$IMAGE_TAG
-          docker push $ECR_URI:latest
+      #     # Push
+      #     docker push $ECR_URI:$IMAGE_TAG
+      #     docker push $ECR_URI:latest
 
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+      #     echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
       # Deploy CDK stack
       - name: Deploy CDK
