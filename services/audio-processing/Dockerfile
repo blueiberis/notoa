@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --no-build-isolation -r requirements.txt
 
 # (Optional) Preload Whisper model to avoid runtime download
 # ⚠️ Increases image size (~150MB+), but improves cold start
