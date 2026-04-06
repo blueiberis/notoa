@@ -117,6 +117,14 @@ jobs:
           docker tag $REPO_NAME:latest $ECR_URI:$IMAGE_TAG
           docker tag $REPO_NAME:latest $ECR_URI:latest
 
+          # Get or create repo
+          aws ecr describe-repositories \
+            --repository-names $REPO_NAME \
+            --region $AWS_REGION \
+            || aws ecr create-repository \
+                --repository-name $REPO_NAME \
+                --region $AWS_REGION
+
           # Push
           docker push $ECR_URI:$IMAGE_TAG
           docker push $ECR_URI:latest
