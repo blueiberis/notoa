@@ -74,35 +74,110 @@ def handler(event, context):
     """Lambda handler for audio processing"""
     try:
         print(f"Received event: {json.dumps(event)}")
-
-        if event.get('httpMethod') == 'OPTIONS':
-            # Let API Gateway handle preflight CORS
-            return {"statusCode": 200, "body": ""}
-
-        if event.get('httpMethod') != 'POST':
-            return {"statusCode": 405, "body": json.dumps({"error": "Method not allowed"})}
-
+        
+        # Get OpenAI API key
         openai_api_key = get_openai_api_key()
-
-        body = json.loads(event.get('body', '{}'))
-        bucket = body.get('bucket')
-        key = body.get('key')
-
-        if not bucket or not key:
-            return {"statusCode": 400, "body": json.dumps({"error": "Missing required parameters: bucket and key"})}
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            audio_file_path = os.path.join(temp_dir, f"audio_{uuid.uuid4()}.wav")
-            if not download_file_from_s3(bucket, key, audio_file_path):
-                return {"statusCode": 500, "body": json.dumps({"error": "Failed to download audio file from S3"})}
-
-            transcription_result = transcribe_audio(audio_file_path, openai_api_key)
-
-            transcription_key = f"transcriptions/{key.split('/')[-1].replace('.', '_')}_transcription.json"
-            transcription_path = os.path.join(temp_dir, "transcription.json")
-
-            with open(transcription_path, 'w') as f:
-                json.dump(transcription_result, f, indent=2)
+        print("Successfully retrieved OpenAI API key")
+        
+        # Extract request data
+        http_method = event.get('httpMethod', 'POST')
+        path = event.get('path', '')
+        
+        # Handle CORS preflight request
+        if http_method == 'OPTIONS':
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+                    'Content-Type': 'application/json'
+                },
+                'body': ''
+            }
+        
+        if http_method == 'POST':
+            # Extract recording ID from path
+            # Expected path: /recordings/{recording-id}/process
+            path_parts = path.strip('/').split('/')
+            print(f"Path parts: {path_parts}")
+            
+            if len(path_parts) >= 3 and path_parts[0] == 'recordings' and path_parts[2] == 'process':
+                recording_id = path_parts[1]
+                print(f"Extracted recording ID: {recording_id}")
+                
+                # Parse request body
+                body = json.loads(event.get('body', '{}'))
+                bucket = body.get('bucket')
+                key = body.get('key')
+                
+                if not bucket or not key:
+                    return {
+                        'statusCode': 400,
+                        'headers': {
+                            'Access-Control-Allow-Origin': '*',
+                            'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                            'Access-Control-Allow-Methods': 'POST,OPTIONS',
+                            'Content-Type': 'application/json'
+                        },
+                        'body': json.dumps({
+                            'error': 'Missing required parameters: bucket and key'
+                        })
+                    }
+                
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    audio_file_path = os.path.join(temp_dir, f"audio_{uuid.uuid4()}.wav")
+                    if not download_file_from_s3(bucket, key, audio_file_path):
+                        return {
+                            'statusCode': 500,
+                            'headers': {
+                                'Access-Control-Allow-Origin': '*',
+                                'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                                'Access-Control-Allow-Methods': 'POST,OPTIONS',
+                                'Content-Type': 'application/json'
+                            },
+                            'body': json.dumps({
+                                'error': 'Failed to download audio file from S3'
+                            })
+                        }
+                    
+                    transcription_result = transcribe_audio(audio_file_path, openai_api_key)
+                    
+                    transcription_key = f"transcriptions/{key.split('/')[-1].replace('.', '_')}_transcription.json"
+                    transcription_path = os.path.join(temp_dir, "transcription.json")
+                    
+                    with open(transcription_path, 'w') as f:
+                        json.dump(transcription_result, f, indent=2)
+                    
+                    if upload_file_to_s3(transcription_path, bucket, transcription_key):
+                        return {
+                            'statusCode': 200,
+                            'headers': {
+                                'Access-Control-Allow-Origin': '*',
+                                'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                                'Access-Control-Allow-Methods': 'POST,OPTIONS',
+                                'Content-Type': 'application/json'
+                            },
+                            'body': json.dumps({
+                                'success': True,
+                                'transcription': transcription_result,
+                                'transcription_file': f"s3://{bucket}/{transcription_key}"
+                            })
+                        }
+                    else:
+                        return {
+                            'statusCode': 500,
+                            'headers': {
+                                'Access-Control-Allow-Origin': '*',
+                                'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                                'Access-Control-Allow-Methods': 'POST,OPTIONS',
+                                'Content-Type': 'application/json'
+                            },
+                            'body': json.dumps({
+                                'error': 'Failed to save transcription to S3'
+                            })
+                        }
+            else:
 
             if upload_file_to_s3(transcription_path, bucket, transcription_key):
                 return {

@@ -269,6 +269,8 @@ export default function RecordingsPage() {
 
   const processAudioForTranscription = async (recording: Recording) => {
     try {
+      console.log('Processing transcription for recording:', recording);
+      
       // Update recording state to show loading
       setRecordings(prev => prev.map(r => 
         r.id === recording.id 
@@ -276,12 +278,14 @@ export default function RecordingsPage() {
           : r
       ));
 
-      const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/process`, {
-        bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET || 'notoa-uploads', // Use environment variable or fallback
+      const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${recording.id}/process`, {
+        bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET || 'notoa-uploads',
         key: recording.key
       });
 
       const result = await handleApiResponse(response);
+      
+      console.log('Transcription result:', result);
       
       // Update recording with transcription data
       setRecordings(prev => prev.map(r => 

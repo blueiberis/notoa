@@ -466,8 +466,8 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     uploadBucket.grantRead(audioProcessingFn);
     uploadBucket.grantWrite(audioProcessingFn);
 
-    // Add API Gateway route for audio processing
-    recordings.addResource('process').addMethod('POST', new apigw.LambdaIntegration(audioProcessingFn, {
+    // Add API Gateway route for audio processing under recording resource
+    recordingId.addResource('process').addMethod('POST', new apigw.LambdaIntegration(audioProcessingFn, {
       proxy: true,
     }), {
       authorizer,
