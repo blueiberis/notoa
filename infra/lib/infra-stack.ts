@@ -314,6 +314,12 @@ export class InfraStack extends cdk.Stack {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
+    
+    const recordingTranscription = recordingId.addResource('transcription');
+    recordingTranscription.addMethod('GET', new apigw.LambdaIntegration(recordingsFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer,
+    });
 
     // --- API Gateway Custom Domain ---
     const apiDomain = new apigw.DomainName(this, `${id}ApiDomain`, {
