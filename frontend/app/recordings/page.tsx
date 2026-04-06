@@ -277,7 +277,7 @@ export default function RecordingsPage() {
       ));
 
       const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/process`, {
-        bucket: recording.url.split('/')[3], // Extract bucket from URL
+        bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET || 'notoa-uploads', // Use environment variable or fallback
         key: recording.key
       });
 
