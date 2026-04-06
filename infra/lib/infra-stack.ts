@@ -278,38 +278,38 @@ export class InfraStack extends cdk.Stack {
       authorizer,
     });
     
-    const recordingsStart = recordings.addResource('recordings-start');
+    const recordingsStart = recordings.addResource('start');
     recordingsStart.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
     
-    const recordingId = recordings.addResource('recording-id');
-    const recordingPause = recordingId.addResource('recording-pause');
+    const recordingId = recordings.addResource('{recording-id}');
+    const recordingPause = recordingId.addResource('pause');
     recordingPause.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
     
-    const recordingResume = recordingId.addResource('recording-resume');
+    const recordingResume = recordingId.addResource('resume');
     recordingResume.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
     
-    const recordingSave = recordingId.addResource('recording-save');
+    const recordingSave = recordingId.addResource('save');
     recordingSave.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
     
-    const recordingDiscard = recordingId.addResource('recording-discard');
+    const recordingDiscard = recordingId.addResource('discard');
     recordingDiscard.addMethod('DELETE', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
     
-    const recordingUrl = recordingId.addResource('recording-url');
+    const recordingUrl = recordingId.addResource('url');
     recordingUrl.addMethod('GET', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
