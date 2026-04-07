@@ -6,13 +6,13 @@ import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
+import * as ses from 'aws-cdk-lib/aws-ses';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
-//import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as cr from 'aws-cdk-lib/custom-resources';
 
 interface InfraStackProps extends cdk.StackProps {
@@ -53,6 +53,11 @@ export class InfraStack extends cdk.Stack {
       `${id}Cert`,
       props.certArn
     );
+
+    // --- Email Domains ---
+    const emailDomain = new ses.EmailIdentity(this, `${id}EmailIdentity`, {
+      identity: ses.Identity.domain(props.domainName),
+    });
 
     // --- S3 Buckets ---
     const siteBucket = new s3.Bucket(this, `${id}FrontendBucket`, {
@@ -348,6 +353,10 @@ export class InfraStack extends cdk.Stack {
     // --- Grant Lambda Invoke to API Gateway ---
     notesFn.grantInvoke(new iam.ServicePrincipal('apigateway.amazonaws.com'));
     uploadFn.grantInvoke(new iam.ServicePrincipal('apigateway.amazonaws.com'));
+    notesFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+      resources: ['*'], // or restrict to identity ARN
+    }));
 
     // --- CDK Outputs ---
     new cdk.CfnOutput(this, `${id}NextEnv`, {
