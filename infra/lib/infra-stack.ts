@@ -524,7 +524,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
         lambdaArn: cognitoEmailFn.functionArn,
         lambdaVersion: 'V1_0',
       },
-      kmsKeyId: cognitoKmsKeyArn,
+      //kmsKeyId: cognitoKmsKeyArn,
     };
 
     cognitoEmailFn.addPermission(`${id}AllowCognitoInvoke`, {
