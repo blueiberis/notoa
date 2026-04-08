@@ -75,6 +75,68 @@ def transcribe_audio(audio_file_path, openai_api_key):
         print(f"Error transcribing audio: {e}")
         raise
 
+def send_transcription_email(user_email, recording_name, transcription_text):
+    """Send email notification when transcription is complete"""
+    try:
+        subject = f"Transcription Complete: {recording_name}"
+        
+        html_body = f"""
+        <html>
+        <head></head>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px;">
+                <h2 style="color: #333; margin-bottom: 20px;">🎉 Transcription Complete!</h2>
+                <p style="color: #666; line-height: 1.5;">Your recording "<strong>{recording_name}</strong>" has been successfully transcribed.</p>
+                
+                <div style="background-color: #ffffff; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
+                    <h3 style="color: #333; margin-top: 0;">Transcription:</h3>
+                    <p style="color: #555; white-space: pre-wrap; font-family: monospace; background-color: #f9f9f9; padding: 10px; border-radius: 3px; margin: 10px 0;">{transcription_text[:500]}{'...' if len(transcription_text) > 500 else ''}</p>
+                </div>
+                
+                <p style="color: #666; font-size: 14px;">
+                    You can view the full transcription in your <a href="https://app.notoa.tech/recordings" style="color: #10b981; text-decoration: none;">recordings dashboard</a>.
+                </p>
+                
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #999; font-size: 12px; margin: 0;">
+                        This is an automated message from Notoa. Please do not reply to this email.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_body = f"""
+        Transcription Complete: {recording_name}
+        
+        Your recording "{recording_name}" has been successfully transcribed.
+        
+        Transcription preview:
+        {transcription_text}
+        
+        You can also access the transcription in your recordings dashboard: https://app.notoa.tech/recordings
+        """
+        
+        response = ses_client.send_email(
+            Source='noreply@notoa.tech',
+            Destination={'ToAddresses': [user_email]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Html': {'Data': html_body, 'Charset': 'UTF-8'},
+                    'Text': {'Data': text_body, 'Charset': 'UTF-8'}
+                }
+            }
+        )
+        
+        print(f"Email sent successfully to {user_email}")
+        return True
+        
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
 
 def handler(event, context):
     """Lambda handler for audio processing"""
