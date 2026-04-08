@@ -38,6 +38,7 @@ export class InfraStack extends cdk.Stack {
     const apiUrl = `api.${props.domainName}`;
     const audioProcessingRepoName = this.node.tryGetContext('audioProcessingRepoName') || '';
     const audioProcessingImageTag = this.node.tryGetContext('audioProcessingImageTag') || '';
+    const SES_FROM_ADDRESS = `Notoa <no-reply@${props.domainName}>`
 
     if (!audioProcessingRepoName) {
       throw new Error('Audio processing repo name not provided. Pass via CDK context: -c audioProcessingRepoName=...');
@@ -147,6 +148,10 @@ export class InfraStack extends cdk.Stack {
       autoVerify: { 
         email: true, // Keep this true but we'll handle auto-confirmation
       },
+      email: cognito.UserPoolEmail.withSES({
+        fromEmail: SES_FROM_ADDRESS,
+        sesRegion: this.region,
+      }),
       passwordPolicy: {
         minLength: 8,
         requireLowercase: true,
@@ -500,7 +505,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
         sourceMap: true,
       },
       environment: {
-        SES_FROM_ADDRESS: `Notoa <no-reply@${props.domainName}>`,
+        SES_FROM_ADDRESS,
       },
     });
 
