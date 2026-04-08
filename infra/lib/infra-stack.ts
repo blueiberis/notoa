@@ -515,9 +515,9 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
 
     cognitoEmailFn.grantInvoke(cognitoEmailRole);
 
-    const cognitoKmsKeyArn = `arn:aws:kms:${this.region}:${this.account}:alias/aws/cognito-idp`;
+    //const cognitoKmsKeyArn = `arn:aws:kms:${this.region}:${this.account}:alias/aws/cognito-idp`;
 
-    const cfnUserPool = userPool.node.defaultChild as cognito.CfnUserPool;
+    /*const cfnUserPool = userPool.node.defaultChild as cognito.CfnUserPool;
 
     cfnUserPool.lambdaConfig = {
       customEmailSender: {
@@ -525,7 +525,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
         lambdaVersion: 'V1_0',
       },
       //kmsKeyId: cognitoKmsKeyArn,
-    };
+    };*/
 
     cognitoEmailFn.addPermission(`${id}AllowCognitoInvoke`, {
       principal: new iam.ServicePrincipal('cognito-idp.amazonaws.com'),
