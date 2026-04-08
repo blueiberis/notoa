@@ -471,6 +471,12 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/attributes/${kebabId}`],
     }));
 
+    // Grant access to SES for sending emails
+    audioProcessingFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+      resources: ['*'],
+    }));
+
     // Grant access to S3 bucket for audio files
     uploadBucket.grantRead(audioProcessingFn);
     uploadBucket.grantWrite(audioProcessingFn);

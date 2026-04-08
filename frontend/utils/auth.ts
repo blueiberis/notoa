@@ -15,6 +15,38 @@ export async function getCurrentSession(): Promise<string | undefined> {
 }
 
 /**
+ * Gets user information from JWT token
+ * @param token - JWT token
+ * @returns any - Decoded user information
+ */
+export function getUserFromToken(token: string): any {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64));
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('Failed to decode token:', error);
+    return null;
+  }
+}
+
+/**
+ * Gets current user information
+ * @returns Promise<any> - User information or null
+ */
+export async function getCurrentUser(): Promise<any> {
+  try {
+    const token = await getCurrentSession();
+    if (!token) return null;
+    return getUserFromToken(token);
+  } catch (error) {
+    console.error('Failed to get current user:', error);
+    return null;
+  }
+}
+
+/**
  * Makes an authenticated API request with proper headers
  * @param url - API endpoint URL
  * @param options - Fetch options (method, body, etc.)

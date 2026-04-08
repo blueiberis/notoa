@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { getCurrentSession, get, post, del, handleApiResponse } from '@/utils/auth';
+import { getCurrentSession, get, post, del, handleApiResponse, getCurrentUser } from '@/utils/auth';
 import { getEnvVariables } from '../../utils/amplify-check';
 
 interface Recording {
@@ -279,10 +279,15 @@ export default function RecordingsPage() {
           : r
       ));
 
+      // Get current user information
+      const currentUser = await getCurrentUser();
+      const userEmail = currentUser?.email || 'user@notoa.tech';
+
       const envVars = getEnvVariables();
       const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${recording.id}/process`, {
         bucket: envVars.s3BucketUploads,
-        key: recording.key
+        key: recording.key,
+        userEmail: userEmail
       });
 
       const result = await handleApiResponse(response);

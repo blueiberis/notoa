@@ -9,6 +9,7 @@ from openai import OpenAI
 # Initialize AWS clients
 s3_client = boto3.client('s3')
 ssm_client = boto3.client('ssm')
+ses_client = boto3.client('ses')
 
 PARAMETER_NAME = os.environ.get('PARAMETER_NAME')
 REGION = os.environ.get('REGION')
@@ -155,6 +156,20 @@ def handler(event, context):
                         json.dump(transcription_result, f, indent=2)
 
                     if upload_file_to_s3(transcription_path, bucket, transcription_key):
+                        # Send email notification
+                        try:
+                            # Extract user email from request body
+                            body = json.loads(event.get('body', '{}'))
+                            user_email = body.get('userEmail', 'user@notoa.tech')
+                            
+                            # Extract recording name from key
+                            recording_name = local_filename.replace('_', ' ').replace('.wav', '')
+                            
+                            # Send notification email
+                            send_transcription_email(user_email, recording_name, transcription_result['text'])
+                        except Exception as email_error:
+                            print(f"Failed to send email notification: {email_error}")
+                        
                         return {
                             'statusCode': 200,
                             'headers': {
