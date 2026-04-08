@@ -531,5 +531,6 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       principal: new iam.ServicePrincipal('cognito-idp.amazonaws.com'),
       sourceArn: userPool.userPoolArn,
     });
+    userPool.addTrigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, cognitoEmailFn);
   }
 }
