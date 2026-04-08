@@ -13,6 +13,7 @@ import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import * as cr from 'aws-cdk-lib/custom-resources';
 
 interface InfraStackProps extends cdk.StackProps {
@@ -514,6 +515,9 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
     });
 
     cognitoEmailFn.grantInvoke(cognitoEmailRole);
+    const cognitoKmsKey = kms.Key.fromLookup(this, `${id}CognitoKmsKey`, {
+      aliasName: 'alias/aws/cognito-idp',
+    })
 
     const cfnUserPool = userPool.node.defaultChild as cognito.CfnUserPool;
 
@@ -522,6 +526,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
         lambdaArn: cognitoEmailFn.functionArn,
         lambdaVersion: 'V1_0',
       },
+      kmsKeyId: cognitoKmsKey.keyArn,
     };
 
     cognitoEmailFn.addPermission(`${id}AllowCognitoInvoke`, {
