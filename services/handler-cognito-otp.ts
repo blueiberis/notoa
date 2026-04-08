@@ -77,10 +77,7 @@ export const handler = async (event: any) => {
     })
   );*/
   event.response.emailSubject = subject;
-  event.response.emailMessage = `
-    From: Notoa &lt;no-reply@notoa.tech&gt;
-    ${htmlBody}
-  `;
+  event.response.emailMessage = htmlBody;
 
   return event;
 };
