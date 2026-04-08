@@ -66,7 +66,7 @@ export const handler = async (event: any) => {
       break;
   }
 
-  await ses.send(
+  /*await ses.send(
     new SendEmailCommand({
       Destination: { ToAddresses: [email] },
       Message: {
@@ -76,12 +76,11 @@ export const handler = async (event: any) => {
       },
       Source: process.env.SES_FROM_ADDRESS!,
     })
-  );
-  //event.response.emailSubject = subject;
-  //event.response.emailMessage = htmlBody;
+  );*/
 
-  event.response.emailSubject = '';
-  event.response.emailMessage = '';
+  event.response.emailSubject = subject;
+  event.response.emailMessage = htmlBody;
+
 
   return event;
 };
