@@ -148,10 +148,6 @@ export class InfraStack extends cdk.Stack {
       autoVerify: { 
         email: true, // Keep this true but we'll handle auto-confirmation
       },
-      email: cognito.UserPoolEmail.withSES({
-        fromEmail: SES_FROM_ADDRESS,
-        sesRegion: this.region,
-      }),
       passwordPolicy: {
         minLength: 8,
         requireLowercase: true,
