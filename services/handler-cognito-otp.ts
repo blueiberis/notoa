@@ -71,7 +71,8 @@ export const handler = async (event: any) => {
       Destination: { ToAddresses: [email] },
       Message: {
         Subject: { Data: subject },
-        Body: { Html: { Data: htmlBody } },
+        //Body: { Html: { Data: htmlBody } },
+        Body: { Html: { Data: htmlBody.replace('${codeParameter}', code) } },
       },
       Source: process.env.SES_FROM_ADDRESS!,
     })
