@@ -4,10 +4,10 @@ const ses = new SESClient({});
 
 export const handler = async (event: any) => {
   const email = event.request.userAttributes.email;
-  const code = event.request.code;
+  const code = event.request.codeParameter;
 
   const subject = "Your verification code";
-  const message = `YYour OTP is: ${code}`;
+  const message = `Your OTP is: ${code}`;
 
   await ses.send(new SendEmailCommand({
     Destination: {
