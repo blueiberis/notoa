@@ -488,5 +488,45 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       authorizer,
       authorizationType: apigw.AuthorizationType.COGNITO,
     });
+
+    // SES for Cognito
+    const cognitoEmailFn = new NodejsFunction(this, `${id}CognitoEmailFn`, {
+      functionName: `${kebabId}-cognito-email-fn`,
+      runtime: lambda.Runtime.NODEJS_24_X,
+      entry: '../services/handler-cognito-otp.ts',
+      handler: 'handler',
+      bundling: {
+        minify: true,
+        sourceMap: true,
+      },
+      environment: {
+        SES_FROM_ADDRESS: `Notoa <no-reply@${props.domainName}>`,
+      },
+    });
+
+    cognitoEmailFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+      resources: ['*'],
+    }));
+
+    const cognitoEmailRole = new iam.Role(this, `${id}CognitoEmailRole`, {
+      assumedBy: new iam.ServicePrincipal('cognito-idp.amazonaws.com'),
+    });
+
+    cognitoEmailFn.grantInvoke(cognitoEmailRole);
+
+    const cfnUserPool = userPool.node.defaultChild as cognito.CfnUserPool;
+
+    cfnUserPool.lambdaConfig = {
+      customEmailSender: {
+        lambdaArn: cognitoEmailFn.functionArn,
+        lambdaVersion: 'V1_0',
+      },
+    };
+
+    cognitoEmailFn.addPermission(`${id}AllowCognitoInvoke`, {
+      principal: new iam.ServicePrincipal('cognito-idp.amazonaws.com'),
+      sourceArn: userPool.userPoolArn,
+    });
   }
 }

@@ -119,7 +119,7 @@ def send_transcription_email(user_email, recording_name, transcription_text):
         """
         
         response = ses_client.send_email(
-            Source='noreply@notoa.tech',
+            Source='Notoa <no-reply@notoa.tech>',
             Destination={'ToAddresses': [user_email]},
             Message={
                 'Subject': {'Data': subject, 'Charset': 'UTF-8'},
