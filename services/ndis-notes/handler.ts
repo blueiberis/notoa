@@ -3,6 +3,7 @@ import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { generateUUID } from "../uuid";
 import { createHandler, LambdaEvent, LambdaContext } from "../handler";
 import OpenAI from 'openai';
+import { EmailService } from "../email-service";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const TABLE = process.env.TABLE_NAME!;
@@ -13,6 +14,7 @@ interface NDISNoteRequest {
   participant?: string;
   date?: string;
   location?: string;
+  sendEmail?: boolean;
 }
 
 interface NDISNoteResponse {
@@ -228,6 +230,14 @@ export const handler = createHandler('ndis-notes-service')(async (event: LambdaE
 
       const ndisNote = await ndisGenerator.generateNDISNote(body);
       
+      // Send email if requested
+      let emailSent = false;
+      if (body.sendEmail && userClaims.email) {
+        const emailOptions = EmailService.generateNDISNoteEmail(ndisNote);
+        emailOptions.to = userClaims.email;
+        emailSent = await EmailService.sendEmail(emailOptions);
+      }
+      
       // Save to database
       const item = {
         id: generateUUID(),
@@ -235,6 +245,7 @@ export const handler = createHandler('ndis-notes-service')(async (event: LambdaE
         request: body,
         response: ndisNote,
         userId: userClaims.sub || userClaims['cognito:username'],
+        emailSent: emailSent,
         createdAt: new Date().toISOString()
       };
       
@@ -244,7 +255,8 @@ export const handler = createHandler('ndis-notes-service')(async (event: LambdaE
         statusCode: 200,
         body: JSON.stringify({
           success: true,
-          data: ndisNote
+          data: ndisNote,
+          emailSent: emailSent
         })
       };
     } catch (error) {
