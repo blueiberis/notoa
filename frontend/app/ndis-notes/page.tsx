@@ -34,7 +34,7 @@ export default function NDISNotes() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [location, setLocation] = useState('');
   const [sendEmail, setSendEmail] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [generatedNote, setGeneratedNote] = useState<NDISNoteResponse | null>(null);
   const [emailSent, setEmailSent] = useState(false);
 
@@ -48,7 +48,7 @@ export default function NDISNotes() {
     e.preventDefault();
     if (!transcript.trim()) return;
 
-    setLoading(true);
+    setIsProcessing(true);
     setGeneratedNote(null);
     setEmailSent(false);
 
@@ -75,7 +75,7 @@ export default function NDISNotes() {
       console.error('Failed to generate NDIS note:', error);
       alert('Failed to generate NDIS note. Please try again.');
     } finally {
-      setLoading(false);
+      setIsProcessing(false);
     }
   };
 
@@ -214,10 +214,10 @@ export default function NDISNotes() {
 
                 <button
                   type="submit"
-                  disabled={loading || !transcript.trim()}
+                  disabled={isProcessing || !transcript.trim()}
                   className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium py-2 px-4 rounded-md"
                 >
-                  {loading ? 'Generating...' : 'Generate NDIS Note'}
+                  {isProcessing ? 'Generating...' : 'Generate NDIS Note'}
                 </button>
               </form>
             </div>
@@ -226,7 +226,7 @@ export default function NDISNotes() {
             <div className="bg-white shadow rounded-lg p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Generated NDIS Note</h2>
               
-              {loading && (
+              {isProcessing && (
                 <div className="text-center py-8">
                   <div className="text-gray-500">Processing transcript with AI...</div>
                 </div>
