@@ -275,6 +275,48 @@ export class InfraStack extends cdk.Stack {
     uploadBucket.grantReadWrite(recordingsFn);
     recordingsTable.grantReadWriteData(recordingsFn);
 
+    // --- NDIS Notes Lambda Function ---
+    const ndisNotesFn = new NodejsFunction(this, `${id}NdisNotesFn`, {
+      functionName: `${kebabId}-ndis-notes-fn`,
+      runtime: lambda.Runtime.NODEJS_24_X,
+      entry: '../services/ndis-notes/handler.ts',
+      handler: 'handler',
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        commandHooks: {
+          beforeBundling: (inputDir, outputDir) => [
+            'npm install',
+          ],
+          afterBundling: (inputDir, outputDir) => [],
+          beforeInstall: (inputDir, outputDir) => [],
+        },
+      },
+      environment: {
+        TABLE_NAME: table.tableName,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+        SES_FROM_ADDRESS,
+        USER_POOL_ID: userPool.userPoolId,
+        USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
+        REGION: this.region,
+      },
+      logGroup: new logs.LogGroup(this, `${id}NdisNotesFnLogGroup`, {
+        logGroupName: `/aws/lambda/${kebabId}-ndis-notes-fn`,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+    });
+    
+    // Ensure table is created before Lambda
+    ndisNotesFn.node.addDependency(table);
+    
+    table.grantReadWriteData(ndisNotesFn);
+    
+    // Grant SES permissions for email sending
+    ndisNotesFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+      resources: ['*'],
+    }));
+
     // --- API Gateway Methods ---
     const notes = api.root.addResource('notes');
     notes.addMethod('GET', new apigw.LambdaIntegration(notesFn));
@@ -285,6 +327,12 @@ export class InfraStack extends cdk.Stack {
 
     const upload = api.root.addResource('upload');
     upload.addMethod('POST', new apigw.LambdaIntegration(uploadFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer,
+    });
+
+    const ndisNotes = api.root.addResource('ndis-notes');
+    ndisNotes.addMethod('POST', new apigw.LambdaIntegration(ndisNotesFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
@@ -334,6 +382,12 @@ export class InfraStack extends cdk.Stack {
     
     const recordingTranscription = recordingId.addResource('transcription');
     recordingTranscription.addMethod('GET', new apigw.LambdaIntegration(recordingsFn), {
+      authorizationType: apigw.AuthorizationType.COGNITO,
+      authorizer,
+    });
+    
+    const recordingNdisNote = recordingId.addResource('ndis-note');
+    recordingNdisNote.addMethod('POST', new apigw.LambdaIntegration(recordingsFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });

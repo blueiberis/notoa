@@ -418,6 +418,102 @@ export const handler = createHandler('recordings-service')(async (event: LambdaE
     }
   }
 
+  // POST /recordings/{id}/ndis-note - Generate NDIS note from recording transcription
+  if (httpMethod === "POST" && path && path.match(/^\/recordings\/[^\/]+\/ndis-note$/)) {
+    const recordingId = path.split('/')[2];
+    
+    try {
+      // Get recording from DynamoDB
+      const getResult = await ddbClient.send(new GetCommand({
+        TableName: RECORDINGS_TABLE,
+        Key: { id: recordingId, userId }
+      }));
+      
+      if (!getResult.Item || getResult.Item.userId !== userId) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ message: "Recording not found" })
+        };
+      }
+
+      const recording = getResult.Item as RecordingMetadata;
+      if (!recording.s3Key) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ message: "Recording file not found" })
+        };
+      }
+
+      // Get transcription from S3
+      const transcriptionKey = `transcriptions/${recording.s3Key.split('/').pop()?.replace('.', '_')}_transcription.json`;
+      
+      try {
+        const transcriptionResult = await s3.send(new GetObjectCommand({
+          Bucket: BUCKET,
+          Key: transcriptionKey
+        }));
+
+        const transcriptionData = await transcriptionResult.Body?.transformToString();
+        
+        if (!transcriptionData) {
+          return {
+            statusCode: 404,
+            body: JSON.stringify({ message: "Transcription not found" })
+          };
+        }
+
+        const transcription = JSON.parse(transcriptionData);
+        
+        // Forward to NDIS notes service
+        const body = JSON.parse(event.body || '{}');
+        const ndisRequest = {
+          transcript: transcription.transcript || transcription.text || JSON.stringify(transcription),
+          participant: body.participant || recording.name,
+          date: body.date || recording.startTime?.split('T')[0],
+          location: body.location || 'Not specified',
+          sendEmail: body.sendEmail || false
+        };
+
+        // Import and call NDIS service
+        const { NDISNoteGenerator } = await import('../ndis-notes/handler');
+        const ndisGenerator = new NDISNoteGenerator();
+        
+        const ndisNote = await ndisGenerator.generateNDISNote(ndisRequest);
+        
+        // Send email if requested
+        let emailSent = false;
+        if (ndisRequest.sendEmail && userClaims.email) {
+          const { EmailService } = await import('../email-service');
+          const emailOptions = EmailService.generateNDISNoteEmail(ndisNote);
+          emailOptions.to = userClaims.email;
+          emailSent = await EmailService.sendEmail(emailOptions);
+        }
+        
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            success: true,
+            data: ndisNote,
+            emailSent: emailSent,
+            recordingId: recordingId,
+            recordingName: recording.name
+          })
+        };
+        
+      } catch (s3Error) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ message: "Transcription not found" })
+        };
+      }
+    } catch (error) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ message: "Failed to generate NDIS note", error: (error as Error).message })
+      };
+    }
+  }
+
   return {
     statusCode: 404,
     body: JSON.stringify({ message: "Endpoint not found" })
