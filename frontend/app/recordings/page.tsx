@@ -19,6 +19,8 @@ interface Recording {
   };
   transcriptionLoading?: boolean;
   transcriptionError?: string;
+  ndisNoteGenerating?: boolean;
+  ndisNoteError?: string;
 }
 
 interface ActiveRecording {
@@ -335,6 +337,61 @@ export default function RecordingsPage() {
     }
   };
 
+  const generateNDISNote = async (recording: Recording) => {
+    if (!recording.transcription) {
+      setError('Please generate transcription first before creating NDIS note.');
+      return;
+    }
+
+    try {
+      // Update recording state to show loading
+      setRecordings(prev => prev.map(r => 
+        r.id === recording.id 
+          ? { ...r, ndisNoteGenerating: true, ndisNoteError: undefined }
+          : r
+      ));
+
+      // Get user input for optional fields
+      const participant = prompt('Participant name (optional):', recording.name) || recording.name;
+      const location = prompt('Location (optional):', 'Not specified') || 'Not specified';
+      const sendEmail = confirm('Send note via email?');
+
+      const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${recording.id}/ndis-note`, {
+        participant,
+        location,
+        sendEmail
+      });
+
+      const result = await handleApiResponse(response);
+      
+      // Update recording state
+      setRecordings(prev => prev.map(r => 
+        r.id === recording.id 
+          ? { ...r, ndisNoteGenerating: false }
+          : r
+      ));
+
+      // Show success message
+      const message = result.emailSent 
+        ? `NDIS note generated and sent via email for ${result.recordingName}!`
+        : `NDIS note generated for ${result.recordingName}!`;
+      
+      alert(message);
+
+      // You could also display the note in a modal or navigate to the NDIS notes page
+      console.log('Generated NDIS Note:', result.data);
+      
+    } catch (err) {
+      console.error('Failed to generate NDIS note:', err);
+      setRecordings(prev => prev.map(r => 
+        r.id === recording.id 
+          ? { ...r, ndisNoteGenerating: false, ndisNoteError: 'Failed to generate NDIS note' }
+          : r
+      ));
+      setError(err instanceof Error ? err.message : 'Failed to generate NDIS note');
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -501,6 +558,40 @@ export default function RecordingsPage() {
                           <span>Transcription saved to: {recording.transcription.transcriptionFile}</span>
                         </div>
                       )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* NDIS Note Section */}
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900">NDIS Progress Note</h4>
+                    {recording.transcription && !recording.ndisNoteGenerating && (
+                      <button
+                        onClick={() => generateNDISNote(recording)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                      >
+                        Generate NDIS Note
+                      </button>
+                    )}
+                  </div>
+                  
+                  {recording.ndisNoteGenerating && (
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Generating NDIS note...</span>
+                    </div>
+                  )}
+                  
+                  {recording.ndisNoteError && (
+                    <div className="text-sm text-red-600">
+                      {recording.ndisNoteError}
+                    </div>
+                  )}
+                  
+                  {!recording.transcription && (
+                    <div className="text-sm text-gray-500">
+                      Generate transcription first to create NDIS notes
                     </div>
                   )}
                 </div>
