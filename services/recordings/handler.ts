@@ -4,6 +4,8 @@ import { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, DeleteComm
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { generateUUID } from "../uuid";
 import { createHandler, LambdaEvent, LambdaContext } from "../handler";
+import { NDISNoteGenerator } from "../ndis-notes/handler";
+import { EmailService } from "../email-service";
 
 const s3 = new S3Client({});
 const ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -474,16 +476,13 @@ export const handler = createHandler('recordings-service')(async (event: LambdaE
           sendEmail: body.sendEmail || false
         };
 
-        // Import and call NDIS service
-        const { NDISNoteGenerator } = await import('../ndis-notes/handler');
+        // Generate NDIS note
         const ndisGenerator = new NDISNoteGenerator();
-        
         const ndisNote = await ndisGenerator.generateNDISNote(ndisRequest);
         
         // Send email if requested
         let emailSent = false;
         if (ndisRequest.sendEmail && userClaims.email) {
-          const { EmailService } = await import('../email-service');
           const emailOptions = EmailService.generateNDISNoteEmail(ndisNote);
           emailOptions.to = userClaims.email;
           emailSent = await EmailService.sendEmail(emailOptions);
