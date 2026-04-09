@@ -74,10 +74,8 @@ If incident exists, write factual summary. If none, respond with "No incidents r
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 200,
-        temperature: 0.1
+        model: "gpt-5-nano",
+        messages: [{ role: "user", content: prompt }]
       });
 
       return response.choices[0]?.message?.content?.trim() || "No incidents reported";
@@ -107,10 +105,8 @@ Do not invent goals.
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 200,
-        temperature: 0.1
+        model: "gpt-5-nano",
+        messages: [{ role: "user", content: prompt }]
       });
 
       return response.choices[0]?.message?.content?.trim() || "No direct goal alignment stated";
@@ -155,10 +151,8 @@ Respond with JSON format:
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 400,
-        temperature: 0.1
+        model: "gpt-5-nano",
+        messages: [{ role: "user", content: prompt }]
       });
 
       const aiResponse = response.choices[0]?.message?.content?.trim() || '{}';

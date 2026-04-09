@@ -79,7 +79,7 @@ This service generates compliant NDIS progress notes from raw voice transcripts 
 
 ## Dependencies
 
-- `openai`: AI processing for semantic analysis
+- `openai`: AI processing using gpt-5-nano model for semantic analysis
 - `@aws-sdk/client-dynamodb`: AWS DynamoDB client
 - `@aws-sdk/lib-dynamodb`: DynamoDB document client
 
