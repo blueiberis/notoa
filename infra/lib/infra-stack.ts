@@ -262,6 +262,8 @@ export class InfraStack extends cdk.Stack {
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+        SES_FROM_ADDRESS,
       },
       logGroup: new logs.LogGroup(this, `${id}RecordingsFnLogGroup`, {
         logGroupName: `/aws/lambda/${kebabId}-recordings-fn`,
@@ -274,6 +276,12 @@ export class InfraStack extends cdk.Stack {
     
     uploadBucket.grantReadWrite(recordingsFn);
     recordingsTable.grantReadWriteData(recordingsFn);
+    
+    // Grant SES permissions for email sending
+    recordingsFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+      resources: ['*'],
+    }));
 
     // --- NDIS Notes Lambda Function ---
     const ndisNotesFn = new NodejsFunction(this, `${id}NdisNotesFn`, {
