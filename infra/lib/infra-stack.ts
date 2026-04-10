@@ -204,13 +204,6 @@ export class InfraStack extends cdk.Stack {
         minify: true,
         sourceMap: true,
         nodeModules,
-        commandHooks: {
-          beforeBundling: (inputDir, outputDir) => [
-            'npm install',
-          ],
-          afterBundling: (inputDir, outputDir) => [],
-          beforeInstall: (inputDir, outputDir) => [],
-        },
       },
       environment: {
         TABLE_NAME: table.tableName,
@@ -297,13 +290,6 @@ export class InfraStack extends cdk.Stack {
         minify: true,
         sourceMap: true,
         nodeModules,
-        commandHooks: {
-          beforeBundling: (inputDir, outputDir) => [
-            'npm install',
-          ],
-          afterBundling: (inputDir, outputDir) => [],
-          beforeInstall: (inputDir, outputDir) => [],
-        },
       },
       environment: {
         TABLE_NAME: table.tableName,
