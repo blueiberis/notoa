@@ -39,7 +39,8 @@ export class InfraStack extends cdk.Stack {
     const audioProcessingRepoName = this.node.tryGetContext('audioProcessingRepoName') || '';
     const audioProcessingImageTag = this.node.tryGetContext('audioProcessingImageTag') || '';
     const SES_FROM_ADDRESS = `Notoa <no-reply@${props.domainName}>`;
-    const nodeModules = ['openai'];
+    const depsLockFilePath = '../services/package-lock.json';
+    const projectRoot = '../services';
 
     if (!audioProcessingRepoName) {
       throw new Error('Audio processing repo name not provided. Pass via CDK context: -c audioProcessingRepoName=...');
@@ -203,8 +204,9 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        nodeModules,
       },
+      depsLockFilePath,
+      projectRoot,
       environment: {
         TABLE_NAME: table.tableName,
         USER_POOL_ID: userPool.userPoolId,
@@ -227,8 +229,9 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        nodeModules,
       },
+      depsLockFilePath,
+      projectRoot,
       environment: {
         BUCKET: uploadBucket.bucketName,
         USER_POOL_ID: userPool.userPoolId,
@@ -251,8 +254,9 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        nodeModules,
       },
+      depsLockFilePath,
+      projectRoot,
       environment: {
         BUCKET: uploadBucket.bucketName,
         RECORDINGS_TABLE_NAME: recordingsTable.tableName,
@@ -289,8 +293,9 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        nodeModules,
       },
+      depsLockFilePath,
+      projectRoot,
       environment: {
         TABLE_NAME: table.tableName,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
@@ -476,14 +481,12 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/attributes/${kebabId}`],
     }));
 
-    new cr.Provider(this, 'SecureParamProvider', {
+    const provider = new cr.Provider(this, 'SecureParamProvider', {
       onEventHandler: secureParamLambda,
     });
 
     new cdk.CustomResource(this, 'MySecureParam', {
-      serviceToken: new cr.Provider(this, 'Provider', {
-        onEventHandler: secureParamLambda,
-      }).serviceToken,
+      serviceToken: provider.serviceToken,
       properties: {
         Name: `/attributes/${kebabId}`,
         Value: 'placeholder',
@@ -552,8 +555,9 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       bundling: {
         minify: true,
         sourceMap: true,
-        nodeModules,
       },
+      depsLockFilePath,
+      projectRoot,
       environment: {
         SES_FROM_ADDRESS,
       },
