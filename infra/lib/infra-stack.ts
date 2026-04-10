@@ -38,7 +38,8 @@ export class InfraStack extends cdk.Stack {
     const apiUrl = `api.${props.domainName}`;
     const audioProcessingRepoName = this.node.tryGetContext('audioProcessingRepoName') || '';
     const audioProcessingImageTag = this.node.tryGetContext('audioProcessingImageTag') || '';
-    const SES_FROM_ADDRESS = `Notoa <no-reply@${props.domainName}>`
+    const SES_FROM_ADDRESS = `Notoa <no-reply@${props.domainName}>`;
+    const nodeModules = ['openai'];
 
     if (!audioProcessingRepoName) {
       throw new Error('Audio processing repo name not provided. Pass via CDK context: -c audioProcessingRepoName=...');
@@ -202,6 +203,7 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
+        nodeModules,
         commandHooks: {
           beforeBundling: (inputDir, outputDir) => [
             'npm install',
@@ -232,6 +234,7 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
+        nodeModules,
       },
       environment: {
         BUCKET: uploadBucket.bucketName,
@@ -255,6 +258,7 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
+        nodeModules,
       },
       environment: {
         BUCKET: uploadBucket.bucketName,
@@ -292,6 +296,7 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
+        nodeModules,
         commandHooks: {
           beforeBundling: (inputDir, outputDir) => [
             'npm install',
@@ -561,6 +566,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       bundling: {
         minify: true,
         sourceMap: true,
+        nodeModules,
       },
       environment: {
         SES_FROM_ADDRESS,
