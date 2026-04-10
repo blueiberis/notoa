@@ -39,8 +39,8 @@ export class InfraStack extends cdk.Stack {
     const audioProcessingRepoName = this.node.tryGetContext('audioProcessingRepoName') || '';
     const audioProcessingImageTag = this.node.tryGetContext('audioProcessingImageTag') || '';
     const SES_FROM_ADDRESS = `Notoa <no-reply@${props.domainName}>`;
-    const depsLockFilePath = '../services/package-lock.json';
-    const projectRoot = '../services';
+    const depsLockFilePath = '../../services/package-lock.json';
+    const projectRoot = '../../services';
 
     if (!audioProcessingRepoName) {
       throw new Error('Audio processing repo name not provided. Pass via CDK context: -c audioProcessingRepoName=...');
