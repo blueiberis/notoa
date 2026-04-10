@@ -45,6 +45,10 @@ jobs:
       - name: Install root dependencies
         run: npm install
 
+      # Install esbuild (to resolve the bundling issue)
+      - name: Install esbuild
+        run: npm install esbuild@0.28.0
+
       # Set environment variables
       - name: Set environment variables
         run: |
