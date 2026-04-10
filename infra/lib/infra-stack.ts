@@ -343,7 +343,9 @@ export class InfraStack extends cdk.Stack {
     });
 
     const ndisNotes = api.root.addResource('ndis-notes');
-    ndisNotes.addMethod('POST', new apigw.LambdaIntegration(ndisNotesFn), {
+    ndisNotes.addMethod('POST', new apigw.LambdaIntegration(ndisNotesFn, {
+      timeout: Duration.minutes(5),
+    }), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
