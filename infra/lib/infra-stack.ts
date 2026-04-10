@@ -486,7 +486,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/attributes/${kebabId}`],
     }));
 
-    const provider = new cr.Provider(this, 'SecureParamProvider', {
+    const provider = new cr.Provider(this, 'Provider', {
       onEventHandler: secureParamLambda,
     });
 
