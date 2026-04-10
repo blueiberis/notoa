@@ -293,7 +293,7 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        externalModules: ['openai'],
+        //externalModules: ['openai'],
       },
       depsLockFilePath,
       projectRoot,
