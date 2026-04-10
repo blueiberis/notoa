@@ -1,4 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cf from 'aws-cdk-lib/aws-cloudfront';
@@ -289,6 +290,7 @@ export class InfraStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_24_X,
       entry: '../services/ndis-notes/handler.ts',
       handler: 'handler',
+      timeout: Duration.minutes(5),
       bundling: {
         minify: true,
         sourceMap: true,
