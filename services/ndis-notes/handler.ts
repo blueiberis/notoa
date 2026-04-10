@@ -1,13 +1,58 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import { generateUUID } from "../uuid";
 import { createHandler, LambdaEvent, LambdaContext } from "../handler";
 import OpenAI from 'openai';
 import { EmailService } from "../email-service";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const ssmClient = new SSMClient({});
 const TABLE = process.env.TABLE_NAME!;
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const PARAMETER_NAME = process.env.PARAMETER_NAME!;
+
+// Helper function to get OpenAI API key from Parameter Store
+async function getOpenAIApiKey(): Promise<string> {
+  try {
+    const response = await ssmClient.send(new GetParameterCommand({
+      Name: PARAMETER_NAME,
+      WithDecryption: true
+    }));
+    
+    const parameterValue = response.Parameter?.Value;
+    if (!parameterValue) {
+      throw new Error('Parameter value is empty');
+    }
+    
+    // Parse the parameter value as key-value pairs (like OPENAI_API_KEY=sk-...)
+    const lines = parameterValue.split('\n');
+    for (const line of lines) {
+      if (line.startsWith('OPENAI_API_KEY=')) {
+        const apiKey = line.split('=', 2)[1].trim();
+        if (!apiKey) {
+          throw new Error('OPENAI_API_KEY value is empty');
+        }
+        return apiKey;
+      }
+    }
+    
+    throw new Error('OPENAI_API_KEY not found in parameter store');
+  } catch (error) {
+    console.error('Failed to get OpenAI API key from Parameter Store:', error);
+    throw error;
+  }
+}
+
+// Initialize OpenAI client lazily
+let openai: OpenAI | null = null;
+
+async function getOpenAIClient(): Promise<OpenAI> {
+  if (!openai) {
+    const apiKey = await getOpenAIApiKey();
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+}
 
 interface NDISNoteRequest {
   transcript: string;
@@ -75,7 +120,8 @@ If incident exists, write factual summary. If none, respond with "No incidents r
 `;
 
     try {
-      const response = await openai.chat.completions.create({
+      const openaiClient = await getOpenAIClient();
+      const response = await openaiClient.chat.completions.create({
         model: "gpt-5-nano",
         messages: [{ role: "user", content: prompt }]
       });
@@ -83,7 +129,7 @@ If incident exists, write factual summary. If none, respond with "No incidents r
       return response.choices[0]?.message?.content?.trim() || "No incidents reported";
     } catch (error) {
       console.error('Error analyzing incidents:', error);
-      console.error('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY);
+      console.error('Parameter Store path:', PARAMETER_NAME);
       console.error('Incident analysis error details:', JSON.stringify(error, null, 2));
       return "Incident analysis unavailable";
     }
@@ -108,7 +154,8 @@ Do not invent goals.
 `;
 
     try {
-      const response = await openai.chat.completions.create({
+      const openaiClient = await getOpenAIClient();
+      const response = await openaiClient.chat.completions.create({
         model: "gpt-5-nano",
         messages: [{ role: "user", content: prompt }]
       });
@@ -116,7 +163,7 @@ Do not invent goals.
       return response.choices[0]?.message?.content?.trim() || "No direct goal alignment stated";
     } catch (error) {
       console.error('Error analyzing goal alignment:', error);
-      console.error('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY);
+      console.error('Parameter Store path:', PARAMETER_NAME);
       console.error('Goal alignment error details:', JSON.stringify(error, null, 2));
       return "Goal alignment analysis unavailable";
     }
@@ -156,7 +203,8 @@ Respond with JSON format:
 `;
 
     try {
-      const response = await openai.chat.completions.create({
+      const openaiClient = await getOpenAIClient();
+      const response = await openaiClient.chat.completions.create({
         model: "gpt-5-nano",
         messages: [{ role: "user", content: prompt }]
       });
@@ -178,7 +226,7 @@ Respond with JSON format:
       };
     } catch (error) {
       console.error('Error generating structured note:', error);
-      console.error('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY);
+      console.error('Parameter Store path:', PARAMETER_NAME);
       console.error('Error details:', JSON.stringify(error, null, 2));
       return {
         participant: request.participant || "Not specified",

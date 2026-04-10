@@ -263,7 +263,6 @@ export class InfraStack extends cdk.Stack {
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
         SES_FROM_ADDRESS,
       },
       logGroup: new logs.LogGroup(this, `${id}RecordingsFnLogGroup`, {
@@ -293,13 +292,12 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        //externalModules: ['openai'],
       },
       depsLockFilePath,
       projectRoot,
       environment: {
         TABLE_NAME: table.tableName,
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+        PARAMETER_NAME: `/attributes/${kebabId}`,
         SES_FROM_ADDRESS,
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
@@ -320,6 +318,12 @@ export class InfraStack extends cdk.Stack {
     ndisNotesFn.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ses:SendEmail', 'ses:SendRawEmail'],
       resources: ['*'],
+    }));
+    
+    // Grant access to Parameter Store
+    ndisNotesFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ssm:GetParameter', 'ssm:GetParameters'],
+      resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/attributes/${kebabId}`],
     }));
 
     // --- API Gateway Methods ---
