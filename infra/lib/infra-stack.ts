@@ -334,7 +334,7 @@ export class InfraStack extends cdk.Stack {
     const ndisQueue = new sqs.Queue(this, `${id}NdisQueue`, {
       queueName: `${kebabId}-ndis-notes-queue`,
       retentionPeriod: Duration.days(14),
-      visibilityTimeout: Duration.minutes(5),
+      visibilityTimeout: Duration.minutes(15), // Must be greater than Lambda timeout (10 min)
     });
 
     // Grant NDIS notes Lambda permission to send messages to queue
@@ -342,6 +342,9 @@ export class InfraStack extends cdk.Stack {
       actions: ['sqs:SendMessage'],
       resources: [ndisQueue.queueArn],
     }));
+
+    // Add QUEUE_URL to NDIS notes Lambda environment
+    ndisNotesFn.addEnvironment('QUEUE_URL', ndisQueue.queueUrl);
 
     // --- NDIS Processor Lambda Function (for async processing) ---
     const ndisProcessorFn = new NodejsFunction(this, `${id}NdisProcessorFn`, {
@@ -403,9 +406,7 @@ export class InfraStack extends cdk.Stack {
     });
 
     const ndisNotes = api.root.addResource('ndis-notes');
-    ndisNotes.addMethod('POST', new apigw.LambdaIntegration(ndisNotesFn, {
-      timeout: Duration.minutes(5),
-    }), {
+    ndisNotes.addMethod('POST', new apigw.LambdaIntegration(ndisNotesFn), {
       authorizationType: apigw.AuthorizationType.COGNITO,
       authorizer,
     });
