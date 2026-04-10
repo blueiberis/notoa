@@ -45,10 +45,6 @@ jobs:
       - name: Install root dependencies
         run: npm install
 
-      # Install esbuild (to resolve the bundling issue)
-      - name: Install esbuild
-        run: npm install esbuild@0.28.0
-
       # Set environment variables
       - name: Set environment variables
         run: |
@@ -138,6 +134,12 @@ jobs:
 
           echo "AUDIO_PROCESSING_IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
           echo "AUDIO_PROCESSING_REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+
+      # Install services
+      - name: Deploy CDK
+        run: |
+          cd services
+          npm install
 
       # Deploy CDK stack
       - name: Deploy CDK

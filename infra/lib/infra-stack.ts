@@ -40,6 +40,7 @@ export class InfraStack extends cdk.Stack {
     const audioProcessingImageTag = this.node.tryGetContext('audioProcessingImageTag') || '';
     const SES_FROM_ADDRESS = `Notoa <no-reply@${props.domainName}>`;
     const depsLockFilePath = '../services/package-lock.json';
+    const externalModules = ['openai'];
     const projectRoot = '../services';
 
     if (!audioProcessingRepoName) {
@@ -204,6 +205,7 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
+        externalModules,
       },
       depsLockFilePath,
       projectRoot,
@@ -229,6 +231,7 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
+        externalModules,
       },
       depsLockFilePath,
       projectRoot,
@@ -254,6 +257,7 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
+        externalModules,
       },
       depsLockFilePath,
       projectRoot,
@@ -293,6 +297,7 @@ export class InfraStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
+        externalModules,
       },
       depsLockFilePath,
       projectRoot,
@@ -555,6 +560,7 @@ NEXT_PUBLIC_CLOUDFRONT_URL=${adminUrl}`,
       bundling: {
         minify: true,
         sourceMap: true,
+        externalModules,
       },
       depsLockFilePath,
       projectRoot,
