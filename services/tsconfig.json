@@ -1,12 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "CommonJS",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "baseUrl": ".",   // Add this
+    "paths": {         // Add this
+      "openai": ["node_modules/openai"]
+    }
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]

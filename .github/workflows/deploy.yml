@@ -212,7 +212,7 @@ jobs:
       - name: Build frontend
         run: |
           cd frontend
-          npm install
+          npm install ../services
           
           echo "NEXT_PUBLIC_REGION=${{ env.NEXT_PUBLIC_REGION }}" >> .env.local
           echo "NEXT_PUBLIC_USER_POOL_ID=${{ env.NEXT_PUBLIC_USER_POOL_ID }}" >> .env.local
