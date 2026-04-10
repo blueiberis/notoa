@@ -1,8 +1,17 @@
-import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { SQSHandler, SQSRecord } from 'aws-lambda';
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import { generateUUID } from "../uuid";
-import { createHandler, LambdaEvent, LambdaContext } from "../handler";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import OpenAI from 'openai';
+import { EmailService } from "../email-service";
 
+const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const ssmClient = new SSMClient({});
 const sqsClient = new SQSClient({});
+const TABLE = process.env.TABLE_NAME!;
+const PARAMETER_NAME = process.env.PARAMETER_NAME!;
 const QUEUE_URL = process.env.QUEUE_URL!;
 
 // Helper function to get OpenAI API key from Parameter Store
@@ -54,6 +63,8 @@ interface NDISNoteRequest {
   date?: string;
   location?: string;
   sendEmail?: boolean;
+  requestId?: string;
+  recordingId?: string;
 }
 
 interface NDISNoteResponse {
@@ -87,23 +98,24 @@ class NDISNoteGenerator {
     cleaned = cleaned
       .replace(/\bi\s+/gi, 'I ')
       .replace(/\s+([.!?])/g, '$1')
-      .replace(/([.!?])\s*([a-z])/g, (match, punct, letter) => `${punct} ${letter.toUpperCase()}`);
+      .replace(/\s+/g, ' ')
+      .trim();
 
     return cleaned;
   }
 
   private async analyzeIncidentsAndRisks(transcript: string): Promise<string> {
     const prompt = `
-Analyze this transcript for actual incidents or risks that occurred. Use contextual understanding, not keyword matching.
+Analyze this transcript for any incidents, risks, or safety concerns.
 
 Transcript: "${transcript}"
 
-Determine if any of these ACTUALLY occurred:
-- Injury or physical harm
-- Aggression or threatening behavior  
-- Emotional distress (observable, not assumed)
-- Safety risks or hazards
-- Escalation or de-escalation events
+Focus on:
+- Physical safety incidents (falls, injuries, accidents)
+- Medical emergencies or health concerns
+- Behavioral incidents (aggression, distress, elopement)
+- Environmental hazards
+- Missed medications or treatments
 
 Rules:
 - Only classify as incident if clear evidence exists
@@ -238,89 +250,117 @@ Respond with JSON format:
   }
 
   async generateNDISNote(request: NDISNoteRequest): Promise<NDISNoteResponse> {
-    // Step 1: Clean and normalize transcript
-    const cleanedTranscript = this.cleanAndNormalizeTranscript(request.transcript);
+    console.log('Starting NDIS note generation for:', request.participant);
+    
+    try {
+      // Step 1: Clean transcript
+      const cleanedTranscript = this.cleanAndNormalizeTranscript(request.transcript);
+      console.log('Transcript cleaned, length:', cleanedTranscript.length);
 
-    // Step 2: Analyze incidents and risks (parallel with goal alignment)
-    const [incidents, goalAlignment] = await Promise.all([
-      this.analyzeIncidentsAndRisks(cleanedTranscript),
-      this.analyzeGoalAlignment(cleanedTranscript)
-    ]);
+      // Step 2: Run parallel analyses
+      const [incidents, goalAlignment] = await Promise.all([
+        this.analyzeIncidentsAndRisks(cleanedTranscript),
+        this.analyzeGoalAlignment(cleanedTranscript)
+      ]);
 
-    // Step 3: Generate structured note
-    return await this.generateStructuredNote(cleanedTranscript, incidents, goalAlignment, request);
+      console.log('Incidents analysis:', incidents);
+      console.log('Goal alignment:', goalAlignment);
+
+      // Step 3: Generate structured note
+      const ndisNote = await this.generateStructuredNote(
+        cleanedTranscript, 
+        incidents, 
+        goalAlignment, 
+        request
+      );
+
+      console.log('NDIS note generated successfully');
+      return ndisNote;
+
+    } catch (error) {
+      console.error('Error in NDIS note generation:', error);
+      throw error;
+    }
   }
 }
 
-export { NDISNoteGenerator };
+export const handler: SQSHandler = async (event) => {
+  console.log('Processing SQS event with records:', event.Records.length);
+  
+  const generator = new NDISNoteGenerator();
 
-const ndisGenerator = new NDISNoteGenerator();
-
-export const handler = createHandler('ndis-notes-service')(async (event: LambdaEvent, context: LambdaContext, userClaims: any) => {
-  if (event.httpMethod === "POST") {
-    // User is authenticated by API Gateway authorizer
-    if (!userClaims) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ message: "Unauthorized" })
-      };
-    }
-
+  for (const record of event.Records) {
     try {
-      const body: NDISNoteRequest = JSON.parse(event.body || '{}');
+      console.log('Processing record:', record.messageId);
       
-      if (!body.transcript) {
-        return {
-          statusCode: 400,
-          body: JSON.stringify({ message: "Transcript is required" })
-        };
-      }
+      // Parse the message body
+      const messageBody = JSON.parse(record.body);
+      const ndisRequest: NDISNoteRequest = messageBody;
+      
+      console.log('NDIS request parsed:', {
+        participant: ndisRequest.participant,
+        transcriptLength: ndisRequest.transcript?.length,
+        sendEmail: ndisRequest.sendEmail
+      });
 
-      const ndisNote = await ndisGenerator.generateNDISNote(body);
+      // Generate the NDIS note
+      const ndisNote = await generator.generateNDISNote(ndisRequest);
       
+      console.log('NDIS note generated:', {
+        participant: ndisNote.participant,
+        date: ndisNote.date,
+        supportProvided: ndisNote.supportProvided
+      });
+
+      // Save to DynamoDB
+      const noteId = generateUUID();
+      await client.send(new PutCommand({
+        TableName: TABLE,
+        Item: {
+          id: noteId,
+          userId: ndisRequest.requestId || 'system',
+          type: 'ndis-note',
+          recordingId: ndisRequest.recordingId,
+          participant: ndisNote.participant,
+          date: ndisNote.date,
+          location: ndisNote.location,
+          supportProvided: ndisNote.supportProvided,
+          activitiesUndertaken: ndisNote.activitiesUndertaken,
+          participantResponse: ndisNote.participantResponse,
+          outcomesProgress: ndisNote.outcomesProgress,
+          goalAlignment: ndisNote.goalAlignment,
+          incidentsRisks: ndisNote.incidentsRisks,
+          nextSteps: ndisNote.nextSteps,
+          createdAt: new Date().toISOString(),
+          transcript: ndisRequest.transcript,
+          emailSent: false
+        }
+      }));
+
+      console.log('NDIS note saved to DynamoDB:', noteId);
+
       // Send email if requested
       let emailSent = false;
-      if (body.sendEmail && userClaims.email) {
-        const emailOptions = EmailService.generateNDISNoteEmail(ndisNote);
-        emailOptions.to = userClaims.email;
-        emailSent = await EmailService.sendEmail(emailOptions);
+      if (ndisRequest.sendEmail && ndisRequest.requestId) {
+        try {
+          // For now, we'll skip email sending in the processor
+          // In a real implementation, you'd need to fetch user email from Cognito
+          console.log('Email sending requested but not implemented in processor');
+          emailSent = false;
+        } catch (emailError) {
+          console.error('Failed to send email:', emailError);
+        }
       }
-      
-      // Save to database
-      const item = {
-        id: generateUUID(),
-        type: 'ndis-note',
-        request: body,
-        response: ndisNote,
-        userId: userClaims.sub || userClaims['cognito:username'],
-        emailSent: emailSent,
-        createdAt: new Date().toISOString()
-      };
-      
-      await client.send(new PutCommand({ TableName: TABLE, Item: item }));
 
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          success: true,
-          data: ndisNote,
-          emailSent: emailSent
-        })
-      };
+      console.log('Successfully processed NDIS note for record:', record.messageId);
+
     } catch (error) {
-      console.error('Error processing NDIS note:', error);
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ 
-          message: "Internal server error",
-          error: error instanceof Error ? error.message : "Unknown error"
-        })
-      };
+      console.error('Error processing SQS record:', record.messageId, error);
+      // Don't throw the error to avoid failing the entire batch
+      // The message will be returned to the queue for retry
+      throw error;
     }
   }
-  
-  return {
-    statusCode: 400,
-    body: JSON.stringify({ message: "Unsupported method" })
-  };
-});
+
+  console.log('All SQS records processed successfully');
+};

@@ -14,6 +14,8 @@ import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as cr from 'aws-cdk-lib/custom-resources';
 
 interface InfraStackProps extends cdk.StackProps {
@@ -326,6 +328,64 @@ export class InfraStack extends cdk.Stack {
     ndisNotesFn.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ssm:GetParameter', 'ssm:GetParameters'],
       resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/attributes/${kebabId}`],
+    }));
+
+    // --- SQS Queue for NDIS Note Processing ---
+    const ndisQueue = new sqs.Queue(this, `${id}NdisQueue`, {
+      queueName: `${kebabId}-ndis-notes-queue`,
+      retentionPeriod: Duration.days(14),
+      visibilityTimeout: Duration.minutes(5),
+    });
+
+    // Grant NDIS notes Lambda permission to send messages to queue
+    ndisNotesFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['sqs:SendMessage'],
+      resources: [ndisQueue.queueArn],
+    }));
+
+    // --- NDIS Processor Lambda Function (for async processing) ---
+    const ndisProcessorFn = new NodejsFunction(this, `${id}NdisProcessorFn`, {
+      functionName: `${kebabId}-ndis-processor-fn`,
+      runtime: lambda.Runtime.NODEJS_24_X,
+      entry: '../services/ndis-notes/processor.ts',
+      handler: 'handler',
+      timeout: Duration.minutes(10),
+      bundling: {
+        minify: true,
+        sourceMap: true,
+      },
+      depsLockFilePath,
+      projectRoot,
+      environment: {
+        TABLE_NAME: table.tableName,
+        PARAMETER_NAME: `/attributes/${kebabId}`,
+        SES_FROM_ADDRESS,
+        USER_POOL_ID: userPool.userPoolId,
+        USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
+        REGION: this.region,
+        QUEUE_URL: ndisQueue.queueUrl,
+      },
+      logGroup: new logs.LogGroup(this, `${id}NdisProcessorFnLogGroup`, {
+        logGroupName: `/aws/lambda/${kebabId}-ndis-processor-fn`,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+    });
+
+    // Grant processor Lambda permissions
+    table.grantReadWriteData(ndisProcessorFn);
+    ndisQueue.grantConsumeMessages(ndisProcessorFn);
+    ndisProcessorFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+      resources: ['*'],
+    }));
+    ndisProcessorFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ssm:GetParameter', 'ssm:GetParameters'],
+      resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/attributes/${kebabId}`],
+    }));
+
+    // Trigger processor Lambda from SQS queue
+    ndisProcessorFn.addEventSource(new SqsEventSource(ndisQueue, {
+      batchSize: 1,
     }));
 
     // --- API Gateway Methods ---
