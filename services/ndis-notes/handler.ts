@@ -83,6 +83,8 @@ If incident exists, write factual summary. If none, respond with "No incidents r
       return response.choices[0]?.message?.content?.trim() || "No incidents reported";
     } catch (error) {
       console.error('Error analyzing incidents:', error);
+      console.error('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY);
+      console.error('Incident analysis error details:', JSON.stringify(error, null, 2));
       return "Incident analysis unavailable";
     }
   }
@@ -114,6 +116,8 @@ Do not invent goals.
       return response.choices[0]?.message?.content?.trim() || "No direct goal alignment stated";
     } catch (error) {
       console.error('Error analyzing goal alignment:', error);
+      console.error('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY);
+      console.error('Goal alignment error details:', JSON.stringify(error, null, 2));
       return "Goal alignment analysis unavailable";
     }
   }
@@ -174,6 +178,8 @@ Respond with JSON format:
       };
     } catch (error) {
       console.error('Error generating structured note:', error);
+      console.error('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       return {
         participant: request.participant || "Not specified",
         date: request.date || new Date().toISOString().split('T')[0],
