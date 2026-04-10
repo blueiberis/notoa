@@ -135,6 +135,11 @@ jobs:
           echo "AUDIO_PROCESSING_IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
           echo "AUDIO_PROCESSING_REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
 
+      - name: Install Services
+        run: |
+          cd services
+          npm install
+
       # Deploy CDK stack
       - name: Deploy CDK
         run: |
