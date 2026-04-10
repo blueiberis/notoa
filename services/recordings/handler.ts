@@ -4,8 +4,7 @@ import { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, DeleteComm
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { generateUUID } from "../uuid";
 import { createHandler, LambdaEvent, LambdaContext } from "../handler";
-import { NDISNoteGenerator } from "../ndis-notes/handler";
-import { EmailService } from "../email-service";
+import fetch from 'node-fetch';
 
 const s3 = new S3Client({});
 const ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -476,28 +475,67 @@ export const handler = createHandler('recordings-service')(async (event: LambdaE
           sendEmail: body.sendEmail || false
         };
 
-        // Generate NDIS note
-        const ndisGenerator = new NDISNoteGenerator();
-        const ndisNote = await ndisGenerator.generateNDISNote(ndisRequest);
-        
-        // Send email if requested
+        // Call NDIS notes service via HTTP
+        let ndisNote;
         let emailSent = false;
-        if (ndisRequest.sendEmail && userClaims.email) {
-          const emailOptions = EmailService.generateNDISNoteEmail(ndisNote);
-          emailOptions.to = userClaims.email;
-          emailSent = await EmailService.sendEmail(emailOptions);
-        }
         
-        return {
-          statusCode: 200,
-          body: JSON.stringify({
-            success: true,
-            data: ndisNote,
-            emailSent: emailSent,
-            recordingId: recordingId,
-            recordingName: recording.name
-          })
-        };
+        try {
+          // Make HTTP call to NDIS notes service
+          const ndisResponse = await fetch(`${process.env.API_URL}/ndis-notes`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': event.headers?.Authorization || ''
+            },
+            body: JSON.stringify({
+              ...ndisRequest,
+              recordingId: recordingId
+            })
+          });
+          
+          if (ndisResponse.ok) {
+            const ndisResult = await ndisResponse.json();
+            // For async processing, we get a 202 with requestId
+            if (ndisResponse.status === 202) {
+              return {
+                statusCode: 202,
+                body: JSON.stringify({
+                  success: true,
+                  message: "NDIS note generation started. The note will be processed asynchronously and saved to your notes.",
+                  requestId: ndisResult.requestId,
+                  recordingId: recordingId,
+                  recordingName: recording.name
+                })
+              };
+            } else {
+              // Legacy sync response (if needed)
+              ndisNote = ndisResult.data;
+              emailSent = ndisResult.emailSent || false;
+              
+              return {
+                statusCode: 200,
+                body: JSON.stringify({
+                  success: true,
+                  data: ndisNote,
+                  emailSent: emailSent,
+                  recordingId: recordingId,
+                  recordingName: recording.name
+                })
+              };
+            }
+          } else {
+            throw new Error(`NDIS service returned ${ndisResponse.status}`);
+          }
+        } catch (httpError) {
+          console.error('Failed to call NDIS service:', httpError);
+          return {
+            statusCode: 500,
+            body: JSON.stringify({ 
+              message: "Failed to generate NDIS note", 
+              error: httpError instanceof Error ? httpError.message : "Unknown error"
+            })
+          };
+        }
         
       } catch (s3Error) {
         return {

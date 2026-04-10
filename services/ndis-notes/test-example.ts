@@ -1,9 +1,15 @@
 // Test example for NDIS progress note generation
 // This file demonstrates how to use the NDIS service
+// Note: The NDIS service now uses async processing via SQS
 
-import { NDISNoteGenerator } from './handler';
-
-const ndisGenerator = new NDISNoteGenerator();
+interface NDISNoteRequest {
+  transcript: string;
+  participant?: string;
+  date?: string;
+  location?: string;
+  sendEmail?: boolean;
+  recordingId?: string;
+}
 
 // Example transcript
 const exampleTranscript = `
@@ -18,26 +24,48 @@ const testRequest = {
   location: "Community Center"
 };
 
-// Example usage (commented out since this requires OpenAI API key)
+// Example usage (now uses HTTP API with async processing)
 /*
 async function testNDISGeneration() {
   try {
-    console.log('Testing NDIS note generation...');
+    console.log('Testing NDIS note generation via API...');
     
-    const result = await ndisGenerator.generateNDISNote(testRequest);
+    // Make HTTP request to NDIS notes API
+    const response = await fetch('https://api.notoa.tech/ndis-notes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_AUTH_TOKEN'
+      },
+      body: JSON.stringify(testRequest)
+    });
     
-    console.log('Generated NDIS Note:');
-    console.log('===================');
-    console.log(`Participant: ${result.participant}`);
-    console.log(`Date: ${result.date}`);
-    console.log(`Location: ${result.location}`);
-    console.log(`\nSupport Provided: ${result.supportProvided}`);
-    console.log(`Activities Undertaken: ${result.activitiesUndertaken}`);
-    console.log(`Participant Response: ${result.participantResponse}`);
-    console.log(`Outcomes / Progress Toward Goals: ${result.outcomesProgress}`);
-    console.log(`\nGoal Alignment: ${result.goalAlignment}`);
-    console.log(`Incidents / Risks: ${result.incidentsRisks}`);
-    console.log(`Next Steps / Recommendations: ${result.nextSteps}`);
+    if (response.ok) {
+      const result = await response.json();
+      
+      if (response.status === 202) {
+        console.log('NDIS note generation started successfully!');
+        console.log('Request ID:', result.requestId);
+        console.log('Message:', result.message);
+        console.log('The note will be processed asynchronously and saved to your notes.');
+      } else {
+        // Legacy sync response (if applicable)
+        console.log('Generated NDIS Note:');
+        console.log('===================');
+        console.log(`Participant: ${result.data.participant}`);
+        console.log(`Date: ${result.data.date}`);
+        console.log(`Location: ${result.data.location}`);
+        console.log(`\nSupport Provided: ${result.data.supportProvided}`);
+        console.log(`Activities Undertaken: ${result.data.activitiesUndertaken}`);
+        console.log(`Participant Response: ${result.data.participantResponse}`);
+        console.log(`Outcomes / Progress Toward Goals: ${result.data.outcomesProgress}`);
+        console.log(`\nGoal Alignment: ${result.data.goalAlignment}`);
+        console.log(`Incidents / Risks: ${result.data.incidentsRisks}`);
+        console.log(`Next Steps / Recommendations: ${result.data.nextSteps}`);
+      }
+    } else {
+      console.error('API Error:', response.status, response.statusText);
+    }
     
   } catch (error) {
     console.error('Error testing NDIS generation:', error);
