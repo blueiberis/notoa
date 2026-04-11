@@ -3,14 +3,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getCurrentSession, post, handleApiResponse } from '@/utils/auth';
+import { getCurrentSession, post, handleApiResponse, getUserEmail } from '@/utils/auth';
 
 interface NDISNoteRequest {
   transcript: string;
   participant?: string;
   date?: string;
   location?: string;
-  sendEmail?: boolean;
+  email?: string; // If provided, email will be sent
 }
 
 interface NDISNoteResponse {
@@ -53,12 +53,28 @@ export default function NDISNotes() {
     setEmailSent(false);
 
     try {
+      // Get email from Cognito token if user wants to send
+      let email = '';
+      if (sendEmail) {
+        email = await getUserEmail() || '';
+        if (!email) {
+          alert('Unable to get email from your account. Note will be generated without email.');
+        } else {
+          // Basic email validation
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            alert('Invalid email format in your account. Note will be generated without email.');
+            email = '';
+          }
+        }
+      }
+
       const request: NDISNoteRequest = {
         transcript: transcript.trim(),
         participant: participant.trim() || undefined,
         date: date || undefined,
         location: location.trim() || undefined,
-        sendEmail
+        email: email || undefined // Only include email if valid
       };
 
       const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/ndis-notes`, request);

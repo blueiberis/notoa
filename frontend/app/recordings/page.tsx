@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { getCurrentSession, get, post, del, handleApiResponse, getCurrentUser } from '@/utils/auth';
+import { getCurrentSession, get, post, del, handleApiResponse, getCurrentUser, getUserEmail } from '@/utils/auth';
 import { getEnvVariables } from '../../utils/amplify-check';
 
 interface Recording {
@@ -355,11 +355,27 @@ export default function RecordingsPage() {
       const participant = prompt('Participant name (optional):', recording.name) || recording.name;
       const location = prompt('Location (optional):', 'Not specified') || 'Not specified';
       const sendEmail = confirm('Send note via email?');
+      
+      // Get email from Cognito token if user wants to send
+      let email = '';
+      if (sendEmail) {
+        email = await getUserEmail() || '';
+        if (!email) {
+          alert('Unable to get email from your account. Note will be generated without email.');
+        } else {
+          // Basic email validation
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            alert('Invalid email format in your account. Note will be generated without email.');
+            email = '';
+          }
+        }
+      }
 
       const response = await post(`${process.env.NEXT_PUBLIC_API_URL}/recordings/${recording.id}/ndis-note`, {
         participant,
         location,
-        sendEmail
+        email: email || undefined // Only include email if valid
       });
 
       const result = await handleApiResponse(response);

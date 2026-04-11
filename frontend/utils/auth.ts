@@ -47,6 +47,20 @@ export async function getCurrentUser(): Promise<any> {
 }
 
 /**
+ * Gets user email from JWT token
+ * @returns Promise<string | null> - User email or null
+ */
+export async function getUserEmail(): Promise<string | null> {
+  try {
+    const user = await getCurrentUser();
+    return user?.email || null;
+  } catch (error) {
+    console.error('Failed to get user email:', error);
+    return null;
+  }
+}
+
+/**
  * Makes an authenticated API request with proper headers
  * @param url - API endpoint URL
  * @param options - Fetch options (method, body, etc.)
