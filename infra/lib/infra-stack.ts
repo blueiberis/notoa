@@ -267,6 +267,7 @@ export class InfraStack extends cdk.Stack {
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         REGION: this.region,
         SES_FROM_ADDRESS,
+        API_URL: `https://${apiUrl}`,
       },
       logGroup: new logs.LogGroup(this, `${id}RecordingsFnLogGroup`, {
         logGroupName: `/aws/lambda/${kebabId}-recordings-fn`,
