@@ -168,8 +168,8 @@ export default function NDISNotes() {
                   <textarea
                     value={transcript}
                     onChange={(e) => setTranscript(e.target.value)}
-                    placeholder="Paste or type the voice transcript here..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Paste or type voice transcript here..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     rows={6}
                     required
                   />
@@ -185,7 +185,7 @@ export default function NDISNotes() {
                       value={participant}
                       onChange={(e) => setParticipant(e.target.value)}
                       placeholder="e.g., Sarah Smith"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     />
                   </div>
 
@@ -197,7 +197,7 @@ export default function NDISNotes() {
                       type="date"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     />
                   </div>
                 </div>
@@ -210,8 +210,8 @@ export default function NDISNotes() {
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    placeholder="e.g., Community Center"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., Office, Home, Community Center"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
                   />
                 </div>
 
@@ -223,18 +223,20 @@ export default function NDISNotes() {
                     onChange={(e) => setSendEmail(e.target.checked)}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
-                  <label htmlFor="sendEmail" className="ml-2 block text-sm text-gray-700">
+                  <label htmlFor="sendEmail" className="ml-2 text-sm text-gray-600">
                     Send note via email
                   </label>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isProcessing || !transcript.trim()}
-                  className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium py-2 px-4 rounded-md"
-                >
-                  {isProcessing ? 'Generating...' : 'Generate NDIS Note'}
-                </button>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={isProcessing}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium disabled:opacity-50"
+                  >
+                    {isProcessing ? 'Generating...' : 'Generate Note'}
+                  </button>
+                </div>
               </form>
             </div>
 
@@ -249,7 +251,7 @@ export default function NDISNotes() {
               )}
 
               {!loading && !generatedNote && (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-gray-600">
                   Complete the form and click "Generate NDIS Note" to create a professional NDIS progress note.
                 </div>
               )}
