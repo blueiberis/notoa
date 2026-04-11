@@ -62,9 +62,9 @@ interface NDISNoteRequest {
   participant?: string;
   date?: string;
   location?: string;
-  sendEmail?: boolean;
   requestId?: string;
   recordingId?: string;
+  email?: string; // Email address passed from frontend - if present, send email
 }
 
 interface NDISNoteResponse {
@@ -300,7 +300,7 @@ export const handler: SQSHandler = async (event) => {
       console.log('NDIS request parsed:', {
         participant: ndisRequest.participant,
         transcriptLength: ndisRequest.transcript?.length,
-        sendEmail: ndisRequest.sendEmail
+        email: ndisRequest.email || 'none'
       });
 
       // Generate the NDIS note
@@ -311,6 +311,30 @@ export const handler: SQSHandler = async (event) => {
         date: ndisNote.date,
         supportProvided: ndisNote.supportProvided
       });
+
+      // Send email if valid email address is provided
+      let emailSent = false;
+      if (ndisRequest.email && ndisRequest.email !== 'none') {
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (emailRegex.test(ndisRequest.email)) {
+          try {
+            console.log('Sending NDIS note email to:', ndisRequest.email);
+            
+            // Generate email content
+            const emailOptions = EmailService.generateNDISNoteEmail(ndisNote);
+            emailOptions.to = ndisRequest.email;
+            
+            // Send email
+            emailSent = await EmailService.sendEmail(emailOptions);
+            console.log('Email sent successfully:', emailSent);
+          } catch (emailError) {
+            console.error('Failed to send email:', emailError);
+          }
+        } else {
+          console.log('Invalid email format provided, skipping email sending:', ndisRequest.email);
+        }
+      }
 
       // Save to DynamoDB
       const noteId = generateUUID();
@@ -333,24 +357,11 @@ export const handler: SQSHandler = async (event) => {
           nextSteps: ndisNote.nextSteps,
           createdAt: new Date().toISOString(),
           transcript: ndisRequest.transcript,
-          emailSent: false
+          emailSent: emailSent
         }
       }));
 
-      console.log('NDIS note saved to DynamoDB:', noteId);
-
-      // Send email if requested
-      let emailSent = false;
-      if (ndisRequest.sendEmail && ndisRequest.requestId) {
-        try {
-          // For now, we'll skip email sending in the processor
-          // In a real implementation, you'd need to fetch user email from Cognito
-          console.log('Email sending requested but not implemented in processor');
-          emailSent = false;
-        } catch (emailError) {
-          console.error('Failed to send email:', emailError);
-        }
-      }
+      console.log('NDIS note saved to DynamoDB:', noteId, 'Email sent:', emailSent);
 
       console.log('Successfully processed NDIS note for record:', record.messageId);
 

@@ -472,7 +472,7 @@ export const handler = createHandler('recordings-service')(async (event: LambdaE
           participant: body.participant || recording.name,
           date: body.date || recording.startTime?.split('T')[0],
           location: body.location || 'Not specified',
-          sendEmail: body.sendEmail || false
+          email: body.email || userClaims.email // Use email from frontend or user claims
         };
 
         // Call NDIS notes service via HTTP

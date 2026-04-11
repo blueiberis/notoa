@@ -7,8 +7,8 @@ interface NDISNoteRequest {
   participant?: string;
   date?: string;
   location?: string;
-  sendEmail?: boolean;
   recordingId?: string;
+  email?: string; // Email address for sending NDIS note - if present, send email
 }
 
 // Example transcript
@@ -21,7 +21,8 @@ const testRequest = {
   transcript: exampleTranscript,
   participant: "Sarah",
   date: "2026-04-09",
-  location: "Community Center"
+  location: "Community Center",
+  email: "user@example.com" // If email is provided, NDIS note will be sent
 };
 
 // Example usage (now uses HTTP API with async processing)

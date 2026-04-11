@@ -9,8 +9,8 @@ interface NDISNoteRequest {
   participant?: string;
   date?: string;
   location?: string;
-  sendEmail?: boolean;
   recordingId?: string;
+  email?: string; // Email address from frontend - if present, send email
 }
 
 export const handler = createHandler('ndis-notes-service')(async (event: LambdaEvent, context: LambdaContext, userClaims: any) => {
